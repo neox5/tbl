@@ -55,8 +55,9 @@ type TableBorder struct {
 }
 
 type RowBorder struct {
+	Top           bool
 	ColSeparation bool
-	RowSeparation bool
+	Bottom        bool
 	Style         BorderStyle
 }
 
