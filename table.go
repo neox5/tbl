@@ -10,6 +10,7 @@ type state struct {
 	colLevels         []int
 	colWidths         []int
 	rowHeights        []int
+	hLines            []bool
 	currentRow        int
 	stillFlexibleCols bool
 }
