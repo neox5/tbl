@@ -4,7 +4,8 @@ package tbl
 type BorderStyle int
 
 const (
-	Single BorderStyle = iota
+	None BorderStyle = iota
+	Single
 	Double
 	Heavy
 	Rounded

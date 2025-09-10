@@ -11,11 +11,11 @@ func main() {
 
 	// Test basic config creation
 	cfg := tbl.Config{
-		Border: tbl.TableBorder{
+		Border: &tbl.TableBorder{
 			All:   true,
 			Style: tbl.Single,
 		},
-		DefaultCell: tbl.Cell{
+		CellDefault: &tbl.Cell{
 			Content: "default",
 			ColSpan: 1,
 			RowSpan: 1,
@@ -25,7 +25,7 @@ func main() {
 	fmt.Printf("Config created: %+v\n", cfg)
 
 	// Test table creation
-	table := tbl.New(cfg)
+	table := tbl.NewWithConfig(cfg)
 	fmt.Printf("Table created: %p\n", table)
 
 	// Test border chars access
