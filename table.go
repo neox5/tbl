@@ -2,20 +2,21 @@ package tbl
 
 import "fmt"
 
-type Table struct {
-	config Config
-	state  state
-	rows   []Row
-}
+const (
+	NO_COL = -1
+)
 
-type state struct {
-	colLevels         []int
-	colWidths         []int
-	rowHeights        []int
-	hLines            []bool
-	currentRow        int
-	stillFlexibleCols bool
-	width             int
+type Table struct {
+	config       Config
+	rows         []Row
+	virtualRows  []int
+	colLevels    []int
+	colWidths    []int
+	hLines       []bool
+	flexibleCols bool
+	width        int
+	// current possition
+	col, row int
 }
 
 func New() *Table {
@@ -25,9 +26,11 @@ func New() *Table {
 func NewWithConfig(cfg Config) *Table {
 	mergedCfg := DefaultConfig.Merge(cfg)
 	return &Table{
-		config: mergedCfg,
-		state:  state{colLevels: []int{}, colWidths: []int{}},
-		rows:   []Row{},
+		config:      mergedCfg,
+		rows:        []Row{},
+		virtualRows: []int{},
+		colLevels:   []int{},
+		colWidths:   []int{},
 	}
 }
 
@@ -62,42 +65,100 @@ func (t *Table) AddRow(cells ...any) error {
 	return t.Add(r)
 }
 
+func (t *Table) nextCol() int {
+	for i, l := range t.colLevels {
+		if l == 0 {
+			return i
+		}
+	}
+	return NO_COL
+}
+
+func (t *Table) reduceColLevels() {
+	for i, l := range t.colLevels {
+		if l == FLEX {
+			continue
+		} // skip flex colomns
+		t.colLevels[i] -= 1
+	}
+}
+
+func (t *Table) advanceRow() {
+	t.row++
+	t.col = 0
+	t.reduceColLevels()
+
+	for t.nextCol() == NO_COL {
+		t.virtualRows = append(t.virtualRows, t.row)
+		t.row++
+		t.reduceColLevels()
+	}
+}
+
+func (t *Table) availableSpan() int {
+	max, span := 0, 0
+	for _, l := range t.colLevels {
+		if l == 0 {
+			span++
+		} else {
+			if span > max {
+				max = span
+			}
+			span = 0
+		}
+	}
+	if span > max {
+		max = span
+	}
+	return max
+}
+
 func (t *Table) initWithFirstRow(row Row) error {
 	// Calculate total column count from cell spans
 	colCount := 0
 	for _, c := range row.Cells {
+		if c.ColSpan == FLEX {
+			colCount++
+			continue
+		}
 		colCount += c.ColSpan
 	}
-	t.state.colLevels = make([]int, colCount)
-	t.state.colWidths = make([]int, colCount)
+	t.colLevels = make([]int, colCount)
+	t.colWidths = make([]int, colCount)
 
-	rHeight := 0
-	col := 0
 	for _, c := range row.Cells {
-		// columns
-		w := c.Width() / c.ColSpan // width contribution
-		r := c.Width() % c.ColSpan // width remainder
-		for j := range c.ColSpan {
-			t.state.colLevels[col+j] = c.RowSpan
-			t.state.colWidths[col+j] = w
+		t.processCell(c)
 
-			if r > 0 { // adding remainder from left to right
-				t.state.colWidths[col+j]++
-				r-- // reduce remainder for next col until it runs out
-			}
-		}
-		col += c.ColSpan
-
-		// row
-		if rHeight < c.Height() {
-			rHeight = c.Height()
+		if row.Height < c.Height() {
+			row.Height = c.Height()
 		}
 	}
 
 	t.rows = append(t.rows, row)
-	t.state.rowHeights = append(t.state.rowHeights, rHeight)
-	t.state.currentRow++
+	t.advanceRow()
 	return nil
+}
+
+func (t *Table) processCell(cell Cell) {
+	if cell.ColSpan == FLEX {
+		t.colLevels[t.col] = cell.RowSpan
+		t.colWidths[t.col] = 1
+		t.col++
+		return
+	}
+
+	w := cell.Width() / cell.ColSpan // width contribution
+	r := cell.Width() % cell.ColSpan // width remainder
+	for j := range cell.ColSpan {
+		t.colLevels[t.col+j] = cell.RowSpan // rowSpan or FLEX
+		t.colWidths[t.col+j] = w
+
+		if r > 0 { // adding remainder from left to right
+			t.colWidths[t.col+j]++
+			r-- // reduce remainder for next col until it runs out
+		}
+	}
+	t.col += cell.ColSpan
 }
 
 func (t *Table) processRow(row Row) error {
@@ -105,5 +166,17 @@ func (t *Table) processRow(row Row) error {
 		return t.initWithFirstRow(row)
 	}
 
+	for _, c := range row.Cells {
+		if c.ColSpan > t.availableSpan() {
+			return fmt.Errorf("cell[%d:%d]: cell does not fit - needs: %d got: %d", t.row, t.col, c.ColSpan, t.availableSpan())
+		}
+		t.processCell(c)
+		if row.Height < c.Height() {
+			row.Height = c.Height()
+		}
+	}
+
+	t.rows = append(t.rows, row)
+	t.advanceRow()
 	return nil
 }

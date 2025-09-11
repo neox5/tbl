@@ -7,33 +7,14 @@ import (
 )
 
 func main() {
-	fmt.Println("=== TBL Library Test ===")
+	fmt.Println("=== TBL Playground ===")
 
-	// Test basic config creation
-	cfg := tbl.Config{
-		Border: &tbl.TableBorder{
-			All:   true,
-			Style: tbl.Single,
-		},
-		CellDefault: &tbl.Cell{
-			Content: "default",
-			ColSpan: 1,
-			RowSpan: 1,
-		},
-	}
-
-	fmt.Printf("Config created: %+v\n", cfg)
-
-	// Test table creation
-	table := tbl.NewWithConfig(cfg)
-	fmt.Printf("Table created: %p\n", table)
-
-	// Test border chars access
-	chars := tbl.DefaultBorderChars[tbl.Single]
-	fmt.Printf("Single border chars - H:'%c' V:'%c'\n", chars.Horizontal, chars.Vertical)
-
-	// Test FLEX constant
-	fmt.Printf("FLEX value: %d\n", tbl.FLEX)
-
-	fmt.Println("✓ Basic functionality working")
+	t := tbl.New()
+	t.AddRow(
+		t.C("Name").S(1, 2),
+		t.C("Age").S(1, 2),
+		t.C("City").S(1, 2),
+	)
+	t.AddRow("chris", 35, "vienna")
+	t.PrintState()
 }
