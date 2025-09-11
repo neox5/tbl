@@ -1,5 +1,7 @@
 package tbl
 
+import "regexp"
+
 const (
 	FLEX = -1
 )
@@ -43,8 +45,19 @@ func (c Cell) WithSpan(col, row int) Cell {
 	return c
 }
 
+func (c *Cell) Width() int {
+	// this assumes single line only
+	// for multiline/wrapping/ellipsis we need WidthWithConstraints
+	return len(stripAnsiCodes(c.Content))
+}
+
+func (c *Cell) Height() int {
+	// this is temporary until we add multiline support (see c.Width)
+	return 1
+}
+
 func (c Cell) A(h HorizontalAlignment, v VerticalAlignment) Cell {
-	return c.WithAlign(h,v)
+	return c.WithAlign(h, v)
 }
 
 func (c Cell) B(border CellBorder) Cell {
@@ -56,6 +69,11 @@ func (c Cell) C(content string) Cell {
 }
 
 func (c Cell) S(col, row int) Cell {
-	return c.WithSpan(col,row)
+	return c.WithSpan(col, row)
 }
 
+// stripAnsiCodes removes ANSI escape sequences for width calculation
+func stripAnsiCodes(s string) string {
+	re := regexp.MustCompile(`\x1b\[[0-9;]*m`)
+	return re.ReplaceAllString(s, "")
+}
