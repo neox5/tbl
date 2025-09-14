@@ -3,31 +3,36 @@ package main
 import (
 	"fmt"
 
-	"github.com/neox5/tbl"
+	"github.com/neox5/tbl/internal/cell"
+	"github.com/neox5/tbl/internal/table"
 	"github.com/neox5/tbl/types"
 )
 
 func main() {
-	fmt.Println("=== TBL New Architecture Test ===")
+	fmt.Println("=== TBL Internal Architecture Test ===")
 
 	// Test basic table creation
-	t := tbl.New()
+	t := table.New()
 
-	// Test AddRow with mixed types
-	t.AddRow(tbl.C("Name"), tbl.C("Age"), tbl.C("City"))
+	// Test AddRow with mixed types - using NewFromValue for type conversion
+	t.AddRow(
+		cell.NewFromValue("Name"),
+		cell.NewFromValue("Age"),
+		cell.NewFromValue("City"),
+	)
 
 	// Test cell creation and chaining
-	nameCell := tbl.C("John").A(types.Center, types.Middle)
-	ageCell := tbl.C("25").S(1, 2) // span 1 col, 2 rows
-	cityCell := tbl.C("Vienna")
+	nameCell := cell.NewFromValue("John").WithAlign(types.Center, types.Middle)
+	ageCell := cell.NewFromValue("25").WithSpan(1, 2) // span 1 col, 2 rows
+	cityCell := cell.NewFromValue("Vienna")
 
-	t.R(nameCell, ageCell, cityCell)
+	t.AddRow(nameCell, ageCell, cityCell)
 
 	// Test short form methods
-	t.R(
-		tbl.C("Jane").A(types.Right, types.Top),
-		tbl.C("30"),
-		tbl.C("Berlin").B(types.CellBorder{
+	t.AddRow(
+		cell.NewFromValue("Jane").A(types.Right, types.Top),
+		cell.NewFromValue("30"),
+		cell.NewFromValue("Berlin").B(types.CellBorder{
 			Top: true, Right: true, Bottom: true, Left: true,
 			Style: types.Single,
 		}),
@@ -42,19 +47,23 @@ func main() {
 		Width: 80,
 	}
 
-	t2 := tbl.NewWithConfig(config)
-	t2.AddRow(tbl.C("Configured"), tbl.C("Table"), tbl.C("Test"))
+	t2 := table.NewWithConfig(config)
+	t2.AddRow(
+		cell.NewFromValue("Configured"),
+		cell.NewFromValue("Table"),
+		cell.NewFromValue("Test"),
+	)
 
 	// Test standalone cell creation
-	standaloneCell := tbl.NewCell("Standalone").A(types.Center, types.Bottom)
+	standaloneCell := cell.NewFromValue("Standalone").A(types.Center, types.Bottom)
 	fmt.Printf("Standalone cell created: %v\n", standaloneCell)
 
-	fmt.Println("New architecture test completed successfully!")
-	fmt.Println("- Clean wrapper types (Tbl, Cell)")
-	fmt.Println("- Internal implementation separated")
+	fmt.Println("Internal architecture test completed successfully!")
+	fmt.Println("- Direct internal package usage")
+	fmt.Println("- Internal implementation exposed")
 	fmt.Println("- No circular imports")
 	fmt.Println("- Simple config struct in types package")
-	fmt.Println("- Method chaining works on public types")
+	fmt.Println("- Method chaining works on internal types")
 	fmt.Println("- Mixed type handling works")
 	fmt.Println("- Standalone cell creation works")
 }
