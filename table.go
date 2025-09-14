@@ -1,5 +1,7 @@
 package tbl
 
+import "fmt"
+
 type Table struct {
 	// config fields
 	border      TableBorder
@@ -53,4 +55,25 @@ func NewWithConfig(cfg Config) *Table {
 	}
 
 	return t
+}
+
+func (t *Table) newRow() {
+	t.rowStarts = append(t.rowStarts, len(t.cells))
+}
+
+func (t *Table) newCell(value any) Cell {
+	switch v := value.(type) {
+	case string:
+		return t.cellDefault.WithContent(v)
+	case Cell:
+		return v
+	default:
+		return t.cellDefault.WithContent(fmt.Sprintf("%v", v))
+	}
+}
+
+func (t *Table) addCells(cells ...any) {
+	for _, c := range cells {
+		t.cells = append(t.cells, t.newCell(c))
+	}
 }
