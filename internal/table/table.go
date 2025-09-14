@@ -46,7 +46,7 @@ func NewWithConfig(cfg *types.Config) *Table {
 	} else {
 		applyDefaults(cfg)
 	}
-	
+
 	return &Table{
 		config:        cfg,
 		cells:         []*cell.Cell{},
@@ -61,16 +61,21 @@ func NewWithConfig(cfg *types.Config) *Table {
 
 // AddRow adds a new row with the specified cells
 func (t *Table) AddRow(cells ...any) {
-	t.R(cells...)
-}
-
-// R is a short form of AddRow
-func (t *Table) R(cells ...any) {
 	t.newRow()
 	t.addCells(cells...)
 }
 
-// C creates a new cell with the specified value
+// R is a short form of AddRow
+func (t *Table) R(cells ...any) {
+	t.AddRow(cells...)
+}
+
+// NewCell creates a new cell with the specified value
+func (t *Table) NewCell(value any) *cell.Cell {
+	return t.newCell(value)
+}
+
+// C is a short form of NewCell
 func (t *Table) C(value any) *cell.Cell {
 	return t.newCell(value)
 }
@@ -87,12 +92,7 @@ func (t *Table) newCell(value any) *cell.Cell {
 		return v
 	default:
 		// Use default cell configuration and set content
-		var defaultCell *cell.Cell
-		if t.config.DefaultCell != nil {
-			defaultCell = cell.NewFromValue(t.config.DefaultCell)
-		} else {
-			defaultCell = cell.DefaultCell()
-		}
+		defaultCell := cell.NewFromValue(t.config.DefaultCell)
 		return defaultCell.WithContent(cell.NewFromValue(v).Content())
 	}
 }

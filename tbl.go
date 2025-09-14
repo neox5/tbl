@@ -9,6 +9,7 @@ import (
 type Tbl interface {
 	AddRow(cells ...any)
 	R(cells ...any)
+	NewCell(value any) Cell
 	C(value any) Cell
 }
 
