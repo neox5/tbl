@@ -2,25 +2,19 @@ package tbl
 
 import "regexp"
 
-const (
-	FLEX = -1
-)
-
 var DefaultCell = Cell{
 	Content: "",
-	ColSpan: 1,
-	RowSpan: 1,
 	HAlign:  Left,
 	VAlign:  Top,
 }
 
 type Cell struct {
 	Content string
-	ColSpan int
-	RowSpan int
 	Border  CellBorder
 	HAlign  HorizontalAlignment
 	VAlign  VerticalAlignment
+	Col     CellAxis
+	Row     CellAxis
 }
 
 func (c Cell) WithAlign(h HorizontalAlignment, v VerticalAlignment) Cell {
@@ -40,8 +34,8 @@ func (c Cell) WithContent(content string) Cell {
 }
 
 func (c Cell) WithSpan(col, row int) Cell {
-	c.ColSpan = col
-	c.RowSpan = row
+	c.Col.Span = col
+	c.Row.Span = row
 	return c
 }
 

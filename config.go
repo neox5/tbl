@@ -3,7 +3,6 @@ package tbl
 var DefaultConfig = Config{
 	Border:      &DefaultTableBorder,
 	CellDefault: &DefaultCell,
-	RowDefault:  &DefaultRow,
 	Width:       0,
 	MaxWidth:    0,
 }
@@ -17,7 +16,6 @@ var DefaultTableBorder = TableBorder{
 type Config struct {
 	Border      *TableBorder
 	CellDefault *Cell
-	RowDefault  *Row
 	Width       int
 	MaxWidth    int
 }
@@ -26,7 +24,6 @@ func (base Config) Merge(cfg Config) Config {
 	result := Config{
 		Border:      base.Border,
 		CellDefault: base.CellDefault,
-		RowDefault:  base.RowDefault,
 		Width:       base.Width,
 		MaxWidth:    base.MaxWidth,
 	}
@@ -36,9 +33,6 @@ func (base Config) Merge(cfg Config) Config {
 	}
 	if cfg.CellDefault != nil {
 		result.CellDefault = cfg.CellDefault
-	}
-	if cfg.RowDefault != nil {
-		result.RowDefault = cfg.RowDefault
 	}
 	if cfg.Width != 0 {
 		result.Width = cfg.Width

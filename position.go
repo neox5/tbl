@@ -14,18 +14,17 @@ func (t *Table) reduceColLevels() {
 		if l == FLEX {
 			continue
 		}
-		t.colLevels[i] -= 1
+		if l > 0 {
+			t.colLevels[i]--
+		}
 	}
 }
 
 func (t *Table) advanceRow() {
-	t.row++
-	t.col = 0
+	t.currIndex = 0
 	t.reduceColLevels()
 
 	for t.nextCol() == NO_COL {
-		t.virtualRows = append(t.virtualRows, t.row)
-		t.row++
 		t.reduceColLevels()
 	}
 }
