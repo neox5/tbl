@@ -6,8 +6,8 @@ const (
 	NO_CAP = -1 // Indicates no end cap boundary
 )
 
-// CellAxis represents a cell's dimension along one axis (column or row)
-type CellAxis struct {
+// Axis represents a cell's dimension along one axis (column or row)
+type Axis struct {
 	Span   int // Number of columns/rows to span, or FLEX for dynamic
 	Weight int // Weight for FLEX spans (default: 1)
 	Start  int // Starting position (inclusive)
@@ -16,11 +16,11 @@ type CellAxis struct {
 }
 
 // IsFixed returns true if the axis has a fixed end position
-func (a CellAxis) IsFixed() bool {
+func (a Axis) IsFixed() bool {
 	return a.End != 0
 }
 
 // IsFlex returns true if the axis uses flexible spanning
-func (a CellAxis) IsFlex() bool {
+func (a Axis) IsFlex() bool {
 	return a.Span == FLEX
 }

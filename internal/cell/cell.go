@@ -6,14 +6,18 @@ import (
 	"github.com/neox5/tbl/types"
 )
 
+const (
+	COL_MIN_WIDTH = 1
+)
+
 // Cell is the concrete cell implementation
 type Cell struct {
 	content string
 	border  types.CellBorder
 	hAlign  types.HorizontalAlignment
 	vAlign  types.VerticalAlignment
-	col     CellAxis
-	row     CellAxis
+	col     Axis
+	row     Axis
 }
 
 // New creates a new cell with default values
@@ -22,8 +26,8 @@ func New() *Cell {
 		content: "",
 		hAlign:  types.Left,
 		vAlign:  types.Top,
-		col:     CellAxis{Span: 1, Weight: 1},
-		row:     CellAxis{Span: 1, Weight: 1},
+		col:     Axis{Span: 1, Weight: 1},
+		row:     Axis{Span: 1, Weight: 1},
 	}
 }
 
@@ -53,9 +57,28 @@ func (c *Cell) WithBorder(border types.CellBorder) *Cell {
 	return c
 }
 
-// Width calculates the display width of the cell content
-func (c *Cell) Width() int {
+// Content returns the cell content
+func (c *Cell) Content() string {
+	return c.content
+}
+
+// DisplayWidth calculates the display width of the cell content.
+// When column is FLEX it needs to be fixed to report a width.
+func (c *Cell) DisplayWidth() int {
+	if c.col.IsFlex() && ! c.col.IsFixed() {
+		return 0
+	}
 	return len(stripAnsiCodes(c.content))
+}
+
+// ColWidth calculates the column width of the cell.
+// FLEX cells needs to be fixed/determined,
+// otherwise it will report the COL_MIN_WIDTH
+func (c *Cell) ColWidth() int {
+	if c.col.IsFixed() {
+		return c.col.End - c.col.Start
+	}
+	return COL_MIN_WIDTH
 }
 
 // Height calculates the display height of the cell content
@@ -63,9 +86,9 @@ func (c *Cell) Height() int {
 	return 1
 }
 
-// Content returns the cell content
-func (c *Cell) Content() string {
-	return c.content
+// Span return the column and row span
+func (c *Cell) Span() (int, int) {
+	return c.col.Span, c.row.Span
 }
 
 // HAlign returns the horizontal alignment
@@ -81,16 +104,6 @@ func (c *Cell) VAlign() types.VerticalAlignment {
 // Border returns the cell border
 func (c *Cell) Border() types.CellBorder {
 	return c.border
-}
-
-// Col returns the column axis
-func (c *Cell) Col() CellAxis {
-	return c.col
-}
-
-// Row returns the row axis
-func (c *Cell) Row() CellAxis {
-	return c.row
 }
 
 // stripAnsiCodes removes ANSI escape sequences for width calculation
