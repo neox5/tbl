@@ -21,10 +21,16 @@ func (t *Table) AddRow(cells ...*cell.Cell) {
 func (t *Table) addCells(cells []*cell.Cell) {
 	for _, c := range cells {
 		cSpan, rSpan := c.Span()
+		idx := t.nextIndex
 		if !t.spanFit(cSpan) {
-			panic(fmt.Sprintf("cell span %d does not fit at row %d col %d", cSpan, t.row, t.col))
+			panic(fmt.Sprintf("cell(%d) span %d does not fit at row %d col %d", idx, cSpan, t.row, t.col))
 		}
 
+		// add the cell to the table
+		t.cells = append(t.cells, c)
+		t.nextIndex++
+
+		// update colWidths and increase colLevels
 		w := c.ColWidth()
 		for i := range cSpan {
 			// update colWidths when cell width is wider then the current value
@@ -34,10 +40,11 @@ func (t *Table) addCells(cells []*cell.Cell) {
 			t.colLevels[t.col+i] = rSpan // colLevels will always be set; >0 or -1 (FLEX)
 		}
 
-		t.advanceCol()
+		// update indices
+		t.updateColIndex(idx, t.col, cSpan)
+		t.updateRowIndex(idx, t.row, rSpan)
 
-		t.cells = append(t.cells, c)
-		t.nextIndex++
+		t.advanceCol()
 	}
 }
 
