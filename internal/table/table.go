@@ -1,14 +1,19 @@
 package table
 
 import (
+	"fmt"
+
 	"github.com/neox5/tbl/internal/cell"
 	"github.com/neox5/tbl/types"
 )
 
 // Table is the concrete table implementation
 type Table struct {
-	// Configuration
-	config *types.Config
+	// Configuration (flattened)
+	border      *types.TableBorder
+	width       int
+	maxWidth    int
+	newCellFunc func() *cell.Cell
 
 	// Table state
 	cells         []*cell.Cell
@@ -26,9 +31,11 @@ type Table struct {
 
 // New creates a new table with default configuration
 func New() *Table {
-	cfg := defaultConfig()
 	return &Table{
-		config:        cfg,
+		border:        &types.DefaultTableBorder,
+		width:         0,
+		maxWidth:      0,
+		newCellFunc:   cell.New,
 		cells:         []*cell.Cell{},
 		rowStarts:     []int{},
 		colWidths:     []int{},
@@ -41,22 +48,30 @@ func New() *Table {
 
 // NewWithConfig creates a new table with merged configuration
 func NewWithConfig(cfg *types.Config) *Table {
-	if cfg == nil {
-		cfg = defaultConfig()
-	} else {
-		applyDefaults(cfg)
+	t := New()
+
+	if cfg != nil {
+		if cfg.Border != nil {
+			t.border = cfg.Border
+		}
+		if cfg.Width > 0 {
+			t.width = cfg.Width
+		}
+		if cfg.MaxWidth > 0 {
+			t.maxWidth = cfg.MaxWidth
+		}
+		if cfg.NewCellFunc != nil {
+			// Convert public interface func to internal cell func
+			t.newCellFunc = func() *cell.Cell {
+				if c, ok := cfg.NewCellFunc().(*cell.Cell); ok {
+					return c
+				}
+				return cell.New()
+			}
+		}
 	}
 
-	return &Table{
-		config:        cfg,
-		cells:         []*cell.Cell{},
-		rowStarts:     []int{},
-		colWidths:     []int{},
-		colLevels:     []int{},
-		openFlexCells: []int{},
-		colIndex:      make(map[int][]int),
-		rowIndex:      make(map[int][]int),
-	}
+	return t
 }
 
 // AddRow adds a new row with the specified cells
@@ -91,9 +106,7 @@ func (t *Table) newCell(value any) *cell.Cell {
 	case *cell.Cell:
 		return v
 	default:
-		// Use default cell configuration and set content
-		defaultCell := cell.NewFromValue(t.config.DefaultCell)
-		return defaultCell.WithContent(cell.NewFromValue(v).Content())
+		return t.newCellFunc().WithContent(fmt.Sprintf("%v", v))
 	}
 }
 

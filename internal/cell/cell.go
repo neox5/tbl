@@ -1,7 +1,6 @@
 package cell
 
 import (
-	"fmt"
 	"regexp"
 
 	"github.com/neox5/tbl/types"
@@ -17,8 +16,8 @@ type Cell struct {
 	row     CellAxis
 }
 
-// DefaultCell creates a new cell with default values
-func DefaultCell() *Cell {
+// New creates a new cell with default values
+func New() *Cell {
 	return &Cell{
 		content: "",
 		hAlign:  types.Left,
@@ -28,34 +27,30 @@ func DefaultCell() *Cell {
 	}
 }
 
-// WithContent sets the cell content and returns a new cell
+// WithContent sets the cell content
 func (c *Cell) WithContent(content string) *Cell {
-	newCell := *c
-	newCell.content = content
-	return &newCell
+	c.content = content
+	return c
 }
 
 // WithAlign sets the horizontal and vertical alignment
 func (c *Cell) WithAlign(h types.HorizontalAlignment, v types.VerticalAlignment) *Cell {
-	newCell := *c
-	newCell.hAlign = h
-	newCell.vAlign = v
-	return &newCell
+	c.hAlign = h
+	c.vAlign = v
+	return c
 }
 
 // WithSpan sets the column and row span
 func (c *Cell) WithSpan(col, row int) *Cell {
-	newCell := *c
-	newCell.col.Span = col
-	newCell.row.Span = row
-	return &newCell
+	c.col.Span = col
+	c.row.Span = row
+	return c
 }
 
 // WithBorder sets the cell border
 func (c *Cell) WithBorder(border types.CellBorder) *Cell {
-	newCell := *c
-	newCell.border = border
-	return &newCell
+	c.border = border
+	return c
 }
 
 // Short form aliases
@@ -73,18 +68,6 @@ func (c *Cell) S(col, row int) *Cell {
 
 func (c *Cell) B(border types.CellBorder) *Cell {
 	return c.WithBorder(border)
-}
-
-// NewFromValue creates a new cell from any value type
-func NewFromValue(value any) *Cell {
-	switch v := value.(type) {
-	case string:
-		return DefaultCell().WithContent(v)
-	case *Cell:
-		return v
-	default:
-		return DefaultCell().WithContent(fmt.Sprintf("%v", v))
-	}
 }
 
 // Internal accessor methods for processing
