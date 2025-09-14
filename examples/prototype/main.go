@@ -16,23 +16,23 @@ func main() {
 
 	// Test AddRow with mixed types - using NewFromValue for type conversion
 	t.AddRow(
-		cell.NewFromValue("Name"),
-		cell.NewFromValue("Age"),
-		cell.NewFromValue("City"),
+		cell.New().WithContent("Name"),
+		cell.New().WithContent("Age"),
+		cell.New().WithContent("City"),
 	)
 
 	// Test cell creation and chaining
-	nameCell := cell.NewFromValue("John").WithAlign(types.Center, types.Middle)
-	ageCell := cell.NewFromValue("25").WithSpan(1, 2) // span 1 col, 2 rows
-	cityCell := cell.NewFromValue("Vienna")
+	nameCell := cell.New().WithContent("John").WithAlign(types.Center, types.Middle)
+	ageCell := cell.New().WithContent("25").WithSpan(1, 2) // span 1 col, 2 rows
+	cityCell := cell.New().WithContent("Vienna")
 
 	t.AddRow(nameCell, ageCell, cityCell)
 
 	// Test short form methods
 	t.AddRow(
-		cell.NewFromValue("Jane").A(types.Right, types.Top),
-		cell.NewFromValue("30"),
-		cell.NewFromValue("Berlin").B(types.CellBorder{
+		cell.New().WithContent("Jane").WithAlign(types.Right, types.Top),
+		cell.New().WithContent("30"),
+		cell.New().WithContent("Berlin").WithBorder(types.CellBorder{
 			Top: true, Right: true, Bottom: true, Left: true,
 			Style: types.Single,
 		}),
@@ -49,13 +49,13 @@ func main() {
 
 	t2 := table.NewWithConfig(config)
 	t2.AddRow(
-		cell.NewFromValue("Configured"),
-		cell.NewFromValue("Table"),
-		cell.NewFromValue("Test"),
+		cell.New().WithContent("Configured"),
+		cell.New().WithContent("Table"),
+		cell.New().WithContent("Test"),
 	)
 
 	// Test standalone cell creation
-	standaloneCell := cell.NewFromValue("Standalone").A(types.Center, types.Bottom)
+	standaloneCell := cell.New().WithContent("Standalone").WithAlign(types.Center, types.Bottom)
 	fmt.Printf("Standalone cell created: %v\n", standaloneCell)
 
 	fmt.Println("Internal architecture test completed successfully!")

@@ -1,8 +1,6 @@
 package table
 
 import (
-	"fmt"
-
 	"github.com/neox5/tbl/internal/cell"
 	"github.com/neox5/tbl/types"
 )
@@ -65,46 +63,16 @@ func NewWithConfig(cfg *types.Config) *Table {
 
 // AddRow adds a new row with the specified cells
 func (t *Table) AddRow(cells ...*cell.Cell) {
-	t.newRow()
-	t.addCells(cells...)
+	t.startNewRow()
+	t.addCells(cells)
 }
 
-// R is a short form of AddRow
-func (t *Table) R(cells ...*cell.Cell) {
-	t.AddRow(cells...)
-}
-
-// NewCell creates a new cell with the specified value
-func (t *Table) NewCell(value any) *cell.Cell {
-	return t.newCell(value)
-}
-
-// C is a short form of NewCell
-func (t *Table) C(value any) *cell.Cell {
-	return t.newCell(value)
-}
-
-// Render renders the table to string (placeholder implementation)
-func (t *Table) Render() string {
-	return "Table rendering not yet implemented"
-}
-
-// newRow starts a new row by recording the current cell position
-func (t *Table) newRow() {
+// startNewRow starts a new row by recording the current cell position
+func (t *Table) startNewRow() {
 	t.rowStarts = append(t.rowStarts, len(t.cells))
 }
 
-// newCell creates a new cell from any value type
-func (t *Table) newCell(value any) *cell.Cell {
-	switch v := value.(type) {
-	case *cell.Cell:
-		return v
-	default:
-		return cell.New().WithContent(fmt.Sprintf("%v", v))
-	}
-}
-
 // addCells appends multiple cells to the current row
-func (t *Table) addCells(cells ...*cell.Cell) {
+func (t *Table) addCells(cells []*cell.Cell) {
 	t.cells = append(t.cells, cells...)
 }

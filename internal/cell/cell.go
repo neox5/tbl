@@ -1,7 +1,6 @@
 package cell
 
 import (
-	"fmt"
 	"regexp"
 
 	"github.com/neox5/tbl/types"
@@ -25,16 +24,6 @@ func New() *Cell {
 		vAlign:  types.Top,
 		col:     CellAxis{Span: 1, Weight: 1},
 		row:     CellAxis{Span: 1, Weight: 1},
-	}
-}
-
-// NewFromValue creates a new cell from any value type
-func NewFromValue(value any) *Cell {
-	switch v := value.(type) {
-	case *Cell:
-		return v
-	default:
-		return New().WithContent(fmt.Sprintf("%v", v))
 	}
 }
 
@@ -63,25 +52,6 @@ func (c *Cell) WithBorder(border types.CellBorder) *Cell {
 	c.border = border
 	return c
 }
-
-// Short form aliases
-func (c *Cell) C(content string) *Cell {
-	return c.WithContent(content)
-}
-
-func (c *Cell) A(h types.HorizontalAlignment, v types.VerticalAlignment) *Cell {
-	return c.WithAlign(h, v)
-}
-
-func (c *Cell) S(col, row int) *Cell {
-	return c.WithSpan(col, row)
-}
-
-func (c *Cell) B(border types.CellBorder) *Cell {
-	return c.WithBorder(border)
-}
-
-// Internal accessor methods for processing
 
 // Width calculates the display width of the cell content
 func (c *Cell) Width() int {
