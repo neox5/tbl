@@ -1,6 +1,7 @@
-package tbl
+// Path: /types/border.go
+package types
 
-// Border style definitions
+// BorderStyle represents different border drawing styles
 type BorderStyle int
 
 const (
@@ -12,7 +13,16 @@ const (
 	ASCII
 )
 
-// Default border character sets
+// BorderChars defines the characters used for drawing borders
+type BorderChars struct {
+	// Edges
+	Horizontal, Vertical rune
+	// Vertices (intersections)
+	TopLeft, TopRight, BottomLeft, BottomRight rune
+	Cross, TUp, TDown, TLeft, TRight           rune
+}
+
+// DefaultBorderChars provides default character sets for each border style
 var DefaultBorderChars = map[BorderStyle]BorderChars{
 	Single: {
 		Horizontal: '─', Vertical: '│',
@@ -41,28 +51,23 @@ var DefaultBorderChars = map[BorderStyle]BorderChars{
 	},
 }
 
-type BorderChars struct {
-	// Edges
-	Horizontal, Vertical rune
-	// Vertices (intersections)
-	TopLeft, TopRight, BottomLeft, BottomRight rune
-	Cross, TUp, TDown, TLeft, TRight           rune
-}
-
+// TableBorder configures borders for the entire table
 type TableBorder struct {
-	All    bool
-	Around bool
-	Style  BorderStyle
+	All    bool        // Show all borders (internal and external)
+	Around bool        // Show only outer border
+	Style  BorderStyle // Border style to use
 }
 
+// RowBorder configures borders for table rows
 type RowBorder struct {
-	Top           bool
-	ColSeparation bool
-	Bottom        bool
-	Style         BorderStyle
+	Top           bool        // Show border above row
+	ColSeparation bool        // Show vertical separators between columns
+	Bottom        bool        // Show border below row
+	Style         BorderStyle // Border style to use
 }
 
+// CellBorder configures borders for individual cells
 type CellBorder struct {
-	Top, Right, Bottom, Left bool
-	Style                    BorderStyle
+	Top, Right, Bottom, Left bool        // Which sides to show borders on
+	Style                    BorderStyle // Border style to use
 }

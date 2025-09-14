@@ -1,5 +1,7 @@
-package tbl
+// Path: /types/alignment.go
+package types
 
+// HorizontalAlignment represents horizontal text alignment within a cell
 type HorizontalAlignment int
 
 const (
@@ -8,6 +10,7 @@ const (
 	Right
 )
 
+// VerticalAlignment represents vertical text alignment within a cell
 type VerticalAlignment int
 
 const (
@@ -16,6 +19,7 @@ const (
 	Bottom
 )
 
+// Alignment combines horizontal and vertical alignment
 type Alignment struct {
 	Horizontal HorizontalAlignment
 	Vertical   VerticalAlignment
