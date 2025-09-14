@@ -5,47 +5,23 @@ import (
 	"github.com/neox5/tbl/types"
 )
 
-// Default configuration values
-var (
-	defaultTableBorder = types.TableBorder{
-		All:    false,
-		Around: false,
-		Style:  types.Single,
-	}
-)
-
-// Default returns a configuration with sensible defaults
-func Default() *types.Config {
+// defaultConfig returns configuration with sensible defaults
+func defaultConfig() *types.Config {
 	return &types.Config{
-		Border:      &defaultTableBorder,
-		CellDefault: cell.Default(),
+		Border:      &types.DefaultTableBorder,
+		DefaultCell: cell.DefaultCell(),
 		Width:       0,
 		MaxWidth:    0,
 	}
 }
 
-// GetBorder returns the table border configuration
-func GetBorder(cfg *types.Config) types.TableBorder {
-	if cfg.Border != nil {
-		return *cfg.Border
+// applyDefaults applies default values to nil config fields
+func applyDefaults(cfg *types.Config) {
+	if cfg.Border == nil {
+		cfg.Border = &types.DefaultTableBorder
 	}
-	return defaultTableBorder
-}
-
-// GetCellDefault returns the default cell configuration
-func GetCellDefault(cfg *types.Config) *cell.Cell {
-	if cfg.CellDefault != nil {
-		return cell.NewFromValue(cfg.CellDefault)
+	if cfg.DefaultCell == nil {
+		cfg.DefaultCell = cell.DefaultCell()
 	}
-	return cell.Default()
-}
-
-// GetWidth returns the table width
-func GetWidth(cfg *types.Config) int {
-	return cfg.Width
-}
-
-// GetMaxWidth returns the maximum table width
-func GetMaxWidth(cfg *types.Config) int {
-	return cfg.MaxWidth
+	// Width and MaxWidth remain 0 if not set
 }

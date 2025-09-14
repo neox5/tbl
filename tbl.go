@@ -18,7 +18,7 @@ type Cell interface {
 	WithContent(content string) Cell
 	WithSpan(col, row int) Cell
 	WithBorder(border types.CellBorder) Cell
-	
+
 	// Short form aliases
 	A(h types.HorizontalAlignment, v types.VerticalAlignment) Cell
 	C(content string) Cell
@@ -32,6 +32,6 @@ func New() *table.Table {
 }
 
 // NewWithConfig creates a new table with the specified configuration
-func NewWithConfig(cfg types.Config) *table.Table {
+func NewWithConfig(cfg *types.Config) *table.Table {
 	return table.NewWithConfig(cfg)
 }

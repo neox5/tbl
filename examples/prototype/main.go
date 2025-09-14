@@ -34,7 +34,7 @@ func main() {
 	)
 
 	// Test configuration
-	config := types.Config{
+	config := &types.Config{
 		Border: &types.TableBorder{
 			All:   true,
 			Style: types.Single,

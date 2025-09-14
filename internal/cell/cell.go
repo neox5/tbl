@@ -17,8 +17,8 @@ type Cell struct {
 	row     CellAxis
 }
 
-// Default creates a new cell with default values
-func Default() *Cell {
+// DefaultCell creates a new cell with default values
+func DefaultCell() *Cell {
 	return &Cell{
 		content: "",
 		hAlign:  types.Left,
@@ -79,11 +79,11 @@ func (c *Cell) B(border types.CellBorder) *Cell {
 func NewFromValue(value any) *Cell {
 	switch v := value.(type) {
 	case string:
-		return Default().WithContent(v)
+		return DefaultCell().WithContent(v)
 	case *Cell:
 		return v
 	default:
-		return Default().WithContent(fmt.Sprintf("%v", v))
+		return DefaultCell().WithContent(fmt.Sprintf("%v", v))
 	}
 }
 

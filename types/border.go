@@ -1,4 +1,3 @@
-// Path: /types/border.go
 package types
 
 // BorderStyle represents different border drawing styles
@@ -49,6 +48,13 @@ var DefaultBorderChars = map[BorderStyle]BorderChars{
 		TopLeft: '+', TopRight: '+', BottomLeft: '+', BottomRight: '+',
 		Cross: '+', TUp: '+', TDown: '+', TLeft: '+', TRight: '+',
 	},
+}
+
+// DefaultTableBorder provides sensible table border defaults
+var DefaultTableBorder = TableBorder{
+	All:    false,
+	Around: false,
+	Style:  Single,
 }
 
 // TableBorder configures borders for the entire table

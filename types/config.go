@@ -3,7 +3,7 @@ package types
 // Config represents the public configuration for tables
 type Config struct {
 	Border      *TableBorder
-	CellDefault any // Interface type for flexibility
+	DefaultCell any // Interface type for flexibility
 	Width       int
 	MaxWidth    int
 }

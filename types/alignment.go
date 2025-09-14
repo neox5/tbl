@@ -1,4 +1,3 @@
-// Path: /types/alignment.go
 package types
 
 // HorizontalAlignment represents horizontal text alignment within a cell
