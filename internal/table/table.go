@@ -10,10 +10,9 @@ import (
 // Table is the concrete table implementation
 type Table struct {
 	// Configuration (flattened)
-	border      *types.TableBorder
-	width       int
-	maxWidth    int
-	newCellFunc func() *cell.Cell
+	border   *types.TableBorder
+	width    int
+	maxWidth int
 
 	// Table state
 	cells         []*cell.Cell
@@ -35,7 +34,6 @@ func New() *Table {
 		border:        &types.DefaultTableBorder,
 		width:         0,
 		maxWidth:      0,
-		newCellFunc:   cell.New,
 		cells:         []*cell.Cell{},
 		rowStarts:     []int{},
 		colWidths:     []int{},
@@ -60,28 +58,19 @@ func NewWithConfig(cfg *types.Config) *Table {
 		if cfg.MaxWidth > 0 {
 			t.maxWidth = cfg.MaxWidth
 		}
-		if cfg.NewCellFunc != nil {
-			// Convert public interface func to internal cell func
-			t.newCellFunc = func() *cell.Cell {
-				if c, ok := cfg.NewCellFunc().(*cell.Cell); ok {
-					return c
-				}
-				return cell.New()
-			}
-		}
 	}
 
 	return t
 }
 
 // AddRow adds a new row with the specified cells
-func (t *Table) AddRow(cells ...any) {
+func (t *Table) AddRow(cells ...*cell.Cell) {
 	t.newRow()
 	t.addCells(cells...)
 }
 
 // R is a short form of AddRow
-func (t *Table) R(cells ...any) {
+func (t *Table) R(cells ...*cell.Cell) {
 	t.AddRow(cells...)
 }
 
@@ -95,6 +84,11 @@ func (t *Table) C(value any) *cell.Cell {
 	return t.newCell(value)
 }
 
+// Render renders the table to string (placeholder implementation)
+func (t *Table) Render() string {
+	return "Table rendering not yet implemented"
+}
+
 // newRow starts a new row by recording the current cell position
 func (t *Table) newRow() {
 	t.rowStarts = append(t.rowStarts, len(t.cells))
@@ -106,14 +100,11 @@ func (t *Table) newCell(value any) *cell.Cell {
 	case *cell.Cell:
 		return v
 	default:
-		return t.newCellFunc().WithContent(fmt.Sprintf("%v", v))
+		return cell.New().WithContent(fmt.Sprintf("%v", v))
 	}
 }
 
 // addCells appends multiple cells to the current row
-func (t *Table) addCells(cells ...any) {
-	for _, c := range cells {
-		internalCell := t.newCell(c)
-		t.cells = append(t.cells, internalCell)
-	}
+func (t *Table) addCells(cells ...*cell.Cell) {
+	t.cells = append(t.cells, cells...)
 }

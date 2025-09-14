@@ -1,6 +1,7 @@
 package cell
 
 import (
+	"fmt"
 	"regexp"
 
 	"github.com/neox5/tbl/types"
@@ -24,6 +25,16 @@ func New() *Cell {
 		vAlign:  types.Top,
 		col:     CellAxis{Span: 1, Weight: 1},
 		row:     CellAxis{Span: 1, Weight: 1},
+	}
+}
+
+// NewFromValue creates a new cell from any value type
+func NewFromValue(value any) *Cell {
+	switch v := value.(type) {
+	case *Cell:
+		return v
+	default:
+		return New().WithContent(fmt.Sprintf("%v", v))
 	}
 }
 

@@ -14,20 +14,20 @@ func main() {
 	t := tbl.New()
 
 	// Test AddRow with mixed types
-	t.AddRow("Name", "Age", "City")
+	t.AddRow(tbl.C("Name"), tbl.C("Age"), tbl.C("City"))
 
 	// Test cell creation and chaining
-	nameCell := t.C("John").A(types.Center, types.Middle)
-	ageCell := t.C("25").S(1, 2) // span 1 col, 2 rows
-	cityCell := t.C("Vienna")
+	nameCell := tbl.C("John").A(types.Center, types.Middle)
+	ageCell := tbl.C("25").S(1, 2) // span 1 col, 2 rows
+	cityCell := tbl.C("Vienna")
 
 	t.R(nameCell, ageCell, cityCell)
 
 	// Test short form methods
 	t.R(
-		t.C("Jane").C("Updated").A(types.Right, types.Top),
-		t.C("30"),
-		t.C("Berlin").B(types.CellBorder{
+		tbl.C("Jane").A(types.Right, types.Top),
+		tbl.C("30"),
+		tbl.C("Berlin").B(types.CellBorder{
 			Top: true, Right: true, Bottom: true, Left: true,
 			Style: types.Single,
 		}),
@@ -43,13 +43,18 @@ func main() {
 	}
 
 	t2 := tbl.NewWithConfig(config)
-	t2.AddRow("Configured", "Table", "Test")
+	t2.AddRow(tbl.C("Configured"), tbl.C("Table"), tbl.C("Test"))
+
+	// Test standalone cell creation
+	standaloneCell := tbl.NewCell("Standalone").A(types.Center, types.Bottom)
+	fmt.Printf("Standalone cell created: %v\n", standaloneCell)
 
 	fmt.Println("New architecture test completed successfully!")
-	fmt.Println("- Single interface definitions in root package")
-	fmt.Println("- Concrete types returned from constructors")
+	fmt.Println("- Clean wrapper types (Tbl, Cell)")
+	fmt.Println("- Internal implementation separated")
 	fmt.Println("- No circular imports")
 	fmt.Println("- Simple config struct in types package")
-	fmt.Println("- Method chaining works")
+	fmt.Println("- Method chaining works on public types")
 	fmt.Println("- Mixed type handling works")
+	fmt.Println("- Standalone cell creation works")
 }
