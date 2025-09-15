@@ -8,14 +8,13 @@ import (
 
 // AddRow adds a new row with the specified cells
 func (t *Table) AddRow(cells ...*cell.Cell) {
-	t.startNewRow()
+	t.advanceRow()
 	if t.row == 0 {
 		t.initWithFirstRow(cells)
 	}
 	t.addCells(cells)
 	t.resolveRow()
 	t.validateRow()
-	t.advanceRow()
 }
 
 // addCells appends multiple cells to the current row
@@ -27,6 +26,8 @@ func (t *Table) addCells(cells []*cell.Cell) {
 
 // addCell adds a single cell to the current position
 func (t *Table) addCell(c *cell.Cell) {
+	t.advanceCol()
+	
 	idx := t.nextIndex
 	span := c.ColSpan()
 	
@@ -51,8 +52,6 @@ func (t *Table) addCell(c *cell.Cell) {
 	t.updateWidths(c)
 	t.updateLevels(c)
 	t.addIndices(idx, c)
-	
-	t.advanceCol()
 }
 
 // updateWidths updates column widths based on cell content
@@ -110,6 +109,9 @@ func (t *Table) resolveRow() {
 	for _, c := range flexCells {
 		t.updateLevels(c)
 	}
+	
+	// Clear open flex cells after resolution
+	t.openFlexCells = t.openFlexCells[:0]
 }
 
 // validateRow ensures all columns are filled

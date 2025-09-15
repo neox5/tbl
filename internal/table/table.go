@@ -39,7 +39,7 @@ func New() *Table {
 		colLevels:     []int{},
 		openFlexCells: []int{},
 		nextIndex:     0,
-		row:           0,
+		row:           -1, // First advanceRow() brings us to row 0
 		col:           0,
 		colIndex:      make(map[int][]int),
 		rowIndex:      make(map[int][]int),
