@@ -14,7 +14,33 @@ func (t *Table) AddRow(cells ...*cell.Cell) {
 	}
 	t.addCells(cells)
 	t.resolveRow(t.row)
+	
+	// Update levels for current row after resolution
+	flexCells := t.collectFlexCells(t.row)
+	for _, c := range flexCells {
+		t.updateLevels(c)
+	}
+	
 	t.validateColLevels()
+
+	// Early return if no flex rows exist
+	if len(t.flexRows) == 0 {
+		t.colsFixed = true
+		return
+	}
+
+	// Skip resolution if current row has flex cells
+	if t.isFlexRow(t.row) {
+		return
+	}
+
+	// Set colsFixed = true BEFORE resolving flex rows
+	t.colsFixed = true
+
+	// Resolve all previous flex rows
+	for row := range t.flexRows {
+		t.resolveFlexRow(row)
+	}
 }
 
 // addCells appends multiple cells to the current row
@@ -41,7 +67,7 @@ func (t *Table) addCell(c *cell.Cell) {
 
 	// Track flex cells
 	if c.IsColFlex() {
-		t.openFlexCells = append(t.openFlexCells, idx)
+		t.addFlexRow(t.row)
 	}
 
 	// Add to table
@@ -57,12 +83,21 @@ func (t *Table) addCell(c *cell.Cell) {
 // updateWidths updates column widths based on cell content
 func (t *Table) updateWidths(c *cell.Cell) {
 	w := c.Width()
-	if c.IsColFlex() {
+	if c.IsColFlex() && !t.colsFixed {
 		w = 0
 	}
+
+	// Distribute width across spanned columns
+	dw := w / c.ColSpan()
+	r := w % c.ColSpan()
 	for i := range c.ColSpan() {
-		if t.colWidths[c.ColStart()+i] < w {
-			t.colWidths[c.ColStart()+i] = w
+		colW := dw
+		if i < r {
+			colW++ // Distribute remainder to first columns
+		}
+
+		if t.colWidths[c.ColStart()+i] < colW {
+			t.colWidths[c.ColStart()+i] = colW
 		}
 	}
 }
@@ -103,14 +138,18 @@ func (t *Table) resolveRow(row int) {
 	}
 
 	distributeCols(flexCells, colsAvailable)
+	t.recalculatePositions(row)
+}
 
-	// Update levels for expanded flex cells
-	for _, c := range flexCells {
-		t.updateLevels(c)
+// resolveFlexRow resolves flexible column spans and updates widths for the specified row
+func (t *Table) resolveFlexRow(row int) {
+	t.resolveRow(row)
+	t.removeFlexRow(row)
+
+	// Update widths for all cells in this row
+	for _, idx := range t.CellsInRow(row) {
+		t.updateWidths(t.cells[idx])
 	}
-
-	// Clear open flex cells after resolution
-	t.openFlexCells = t.openFlexCells[:0]
 }
 
 // validateColLevels ensures all columns are filled in the current row
@@ -168,5 +207,30 @@ func distributeCols(flexCells []*cell.Cell, remaining int) {
 			}
 		}
 		activeCells = newActive
+	}
+}
+
+// recalculatePositions updates ColStart positions for all cells in a row after span changes
+func (t *Table) recalculatePositions(row int) {
+	cellIndices := t.CellsInRow(row)
+	if len(cellIndices) == 0 {
+		return
+	}
+
+	// Sort cell indices by their current ColStart to maintain order
+	for i := range len(cellIndices)-1 {
+		for j := i + 1; j < len(cellIndices); j++ {
+			if t.cells[cellIndices[i]].ColStart() > t.cells[cellIndices[j]].ColStart() {
+				cellIndices[i], cellIndices[j] = cellIndices[j], cellIndices[i]
+			}
+		}
+	}
+
+	// Recalculate positions sequentially
+	pos := 0
+	for _, idx := range cellIndices {
+		c := t.cells[idx]
+		c.SetColStart(pos)
+		pos += c.ColSpan()
 	}
 }

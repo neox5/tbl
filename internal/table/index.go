@@ -5,7 +5,7 @@ func (t *Table) addColIndex(cellIdx int, colStart, colSpan int) {
 	for i := range colSpan {
 		col := colStart + i
 		if t.colIndex[col] == nil {
-			t.colIndex[col] = make([]int, 0, 4)
+			t.colIndex[col] = make([]int, 0)
 		}
 		t.colIndex[col] = append(t.colIndex[col], cellIdx)
 	}

@@ -8,9 +8,9 @@ import (
 )
 
 func main() {
-	fmt.Println("=== TBL Grid Visualization Test ===")
+	fmt.Println("=== TBL Comparison Table Test ===")
 
-	// Test basic table creation
+	// Test comparison table with flex rows followed by fixed rows
 	t := table.New()
 
 	defer func() {
@@ -25,23 +25,31 @@ func main() {
 		}
 	}()
 
-	// Flex title row
+	// Row 0: Flex title spanning entire table
 	t.AddRow(
-		cell.NewColFlex().WithContent("Table Title"),
+		cell.NewColFlex().WithContent("Employee Comparison Table - Q4 Performance"),
 	)
 
-	// Header row
+	// Row 1: Two flex sections - "Left Side" and "Right Side"
+	t.AddRow(
+		cell.NewColFlex().WithContent("Team Alpha"),
+		cell.NewColFlex().WithContent("Team Beta"),
+	)
+
+	// Row 2: Headers for each section (fixed cells - triggers colsFixed = true)
 	t.AddRow(
 		cell.New().WithContent("Name"),
-		cell.New().WithContent("Age"),
-		cell.New().WithContent("City"),
+		cell.New().WithContent("Score"),
+		cell.New().WithContent("Name"),
+		cell.New().WithContent("Score"),
 	)
 
-	// Data row
+	// Row 3: Person 1 data vs Person 2 data
 	t.AddRow(
-		cell.New().WithContent("John"),
-		cell.New().WithContent("25"),
-		cell.New().WithContent("NYC"),
+		cell.New().WithContent("Alice Johnson"),
+		cell.New().WithContent("95"),
+		cell.New().WithContent("Bob Wilson"),
+		cell.New().WithContent("87"),
 	)
 
 	fmt.Println("\nGrid Visualization:")
@@ -50,5 +58,5 @@ func main() {
 	fmt.Println("\nTable State:")
 	t.PrintDebug()
 
-	fmt.Println("\nInternal architecture test completed successfully!")
+	fmt.Println("\nComparison table test completed successfully!")
 }

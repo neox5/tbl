@@ -13,14 +13,15 @@ type Table struct {
 	maxWidth int
 
 	// Table state
-	cells         []*cell.Cell
-	rowStarts     []int
-	colWidths     []int
-	colLevels     []int
-	hLines        []bool
-	openFlexCells []int
-	nextIndex     int // next cell index
-	row, col      int // next row/col index
+	cells     []*cell.Cell
+	rowStarts []int
+	colWidths []int
+	colLevels []int
+	hLines    []bool
+	flexRows  map[int]bool
+	colsFixed bool // true when column structure is finalized
+	nextIndex int  // next cell index
+	row, col  int  // next row/col index
 
 	// Indices for optimization (future use)
 	colIndex map[int][]int // cells overlapping a column
@@ -30,19 +31,20 @@ type Table struct {
 // New creates a new table with default configuration
 func New() *Table {
 	return &Table{
-		border:        &types.DefaultTableBorder,
-		width:         0,
-		maxWidth:      0,
-		cells:         []*cell.Cell{},
-		rowStarts:     []int{},
-		colWidths:     []int{},
-		colLevels:     []int{},
-		openFlexCells: []int{},
-		nextIndex:     0,
-		row:           -1, // First advanceRow() brings us to row 0
-		col:           0,
-		colIndex:      make(map[int][]int),
-		rowIndex:      make(map[int][]int),
+		border:    &types.DefaultTableBorder,
+		width:     0,
+		maxWidth:  0,
+		cells:     []*cell.Cell{},
+		rowStarts: []int{},
+		colWidths: []int{},
+		colLevels: []int{},
+		flexRows:  make(map[int]bool),
+		colsFixed: false,
+		nextIndex: 0,
+		row:       -1, // First advanceRow() brings us to row 0
+		col:       0,
+		colIndex:  make(map[int][]int),
+		rowIndex:  make(map[int][]int),
 	}
 }
 
@@ -73,4 +75,19 @@ func (t *Table) ColCount() int {
 // RowCount returns the number of rows in the Table
 func (t *Table) RowCount() int {
 	return len(t.rowStarts)
+}
+
+// addFlexRow adds a row to the flex rows map
+func (t *Table) addFlexRow(row int) {
+	t.flexRows[row] = true
+}
+
+// removeFlexRow removes a row from the flex rows map
+func (t *Table) removeFlexRow(row int) {
+	delete(t.flexRows, row)
+}
+
+// isFlexRow returns true if the row is in the flex rows map
+func (t *Table) isFlexRow(row int) bool {
+	return t.flexRows[row]
 }

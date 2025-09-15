@@ -8,7 +8,7 @@ func (t *Table) advanceCol() {
 	}
 
 	// If we've reached the end and have flex cells, expand
-	if t.col >= t.ColCount() && len(t.openFlexCells) > 0 {
+	if t.col >= t.ColCount() && !t.colsFixed {
 		t.colWidths = append(t.colWidths, 0)
 		t.colLevels = append(t.colLevels, 0)
 		// t.col is already at the new column position
