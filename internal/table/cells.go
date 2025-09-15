@@ -27,10 +27,10 @@ func (t *Table) addCells(cells []*cell.Cell) {
 // addCell adds a single cell to the current position
 func (t *Table) addCell(c *cell.Cell) {
 	t.advanceCol()
-	
+
 	idx := t.nextIndex
 	span := c.ColSpan()
-	
+
 	if !t.spanFit(span) {
 		panic(fmt.Sprintf("cell(%d) span %d does not fit at row %d col %d", idx, span, t.row, t.col))
 	}
@@ -38,7 +38,7 @@ func (t *Table) addCell(c *cell.Cell) {
 	// Position cell
 	c.SetColStart(t.col)
 	c.SetRowStart(t.row)
-	
+
 	// Track flex cells
 	if c.IsColFlex() {
 		t.openFlexCells = append(t.openFlexCells, idx)
@@ -57,6 +57,9 @@ func (t *Table) addCell(c *cell.Cell) {
 // updateWidths updates column widths based on cell content
 func (t *Table) updateWidths(c *cell.Cell) {
 	w := c.Width()
+	if c.IsColFlex() {
+		w = 0
+	}
 	for i := range c.ColSpan() {
 		if t.colWidths[c.ColStart()+i] < w {
 			t.colWidths[c.ColStart()+i] = w
@@ -92,24 +95,24 @@ func (t *Table) resolveRow() {
 	if len(t.openFlexCells) == 0 {
 		return
 	}
-	
+
 	flexCells := t.collectFlexCells()
 	if len(flexCells) == 0 {
 		return
 	}
-	
+
 	colsAvailable := t.calcAvailableCols()
 	if colsAvailable <= 0 {
 		return
 	}
-	
+
 	distributeCols(flexCells, colsAvailable)
 
 	// Update levels for expanded flex cells
 	for _, c := range flexCells {
 		t.updateLevels(c)
 	}
-	
+
 	// Clear open flex cells after resolution
 	t.openFlexCells = t.openFlexCells[:0]
 }
@@ -153,7 +156,7 @@ func distributeCols(flexCells []*cell.Cell, remaining int) {
 			activeCells = append(activeCells, c)
 		}
 	}
-	
+
 	for remaining > 0 && len(activeCells) > 0 {
 		// Filter out cells that can no longer grow
 		newActive := activeCells[:0]
@@ -163,7 +166,7 @@ func distributeCols(flexCells []*cell.Cell, remaining int) {
 			}
 			c.AddColSpan(1)
 			remaining--
-			
+
 			if c.ColCanGrow() {
 				newActive = append(newActive, c)
 			}
