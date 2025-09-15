@@ -13,8 +13,8 @@ func (t *Table) AddRow(cells ...*cell.Cell) {
 		t.initWithFirstRow(cells)
 	}
 	t.addCells(cells)
-	t.resolveRow()
-	t.validateRow()
+	t.resolveRow(t.row)
+	t.validateColLevels()
 }
 
 // addCells appends multiple cells to the current row
@@ -90,18 +90,14 @@ func (t *Table) initWithFirstRow(cells []*cell.Cell) {
 	t.colLevels = make([]int, totalCols)
 }
 
-// resolveRow resolves flexible column spans for the current row
-func (t *Table) resolveRow() {
-	if len(t.openFlexCells) == 0 {
-		return
-	}
-
-	flexCells := t.collectFlexCells()
+// resolveRow resolves flexible column spans for the specified row
+func (t *Table) resolveRow(row int) {
+	flexCells := t.collectFlexCells(row)
 	if len(flexCells) == 0 {
 		return
 	}
 
-	colsAvailable := t.calcAvailableCols()
+	colsAvailable := t.calcAvailableCols(row)
 	if colsAvailable <= 0 {
 		return
 	}
@@ -117,8 +113,8 @@ func (t *Table) resolveRow() {
 	t.openFlexCells = t.openFlexCells[:0]
 }
 
-// validateRow ensures all columns are filled
-func (t *Table) validateRow() {
+// validateColLevels ensures all columns are filled in the current row
+func (t *Table) validateColLevels() {
 	for i, level := range t.colLevels {
 		if level == 0 {
 			panic(fmt.Sprintf("incomplete row %d: column %d not filled", t.row, i))
@@ -126,10 +122,10 @@ func (t *Table) validateRow() {
 	}
 }
 
-// collectFlexCells returns flex cells in current row
-func (t *Table) collectFlexCells() []*cell.Cell {
+// collectFlexCells returns flex cells in specified row
+func (t *Table) collectFlexCells(row int) []*cell.Cell {
 	flexCells := make([]*cell.Cell, 0)
-	for _, idx := range t.CellsInRow(t.row) {
+	for _, idx := range t.CellsInRow(row) {
 		c := t.cells[idx]
 		if c.IsColFlex() {
 			flexCells = append(flexCells, c)
@@ -138,10 +134,10 @@ func (t *Table) collectFlexCells() []*cell.Cell {
 	return flexCells
 }
 
-// calcAvailableCols returns columns available for distribution
-func (t *Table) calcAvailableCols() int {
+// calcAvailableCols returns columns available for distribution in specified row
+func (t *Table) calcAvailableCols(row int) int {
 	colCount := 0
-	for _, idx := range t.CellsInRow(t.row) {
+	for _, idx := range t.CellsInRow(row) {
 		c := t.cells[idx]
 		colCount += c.ColSpan()
 	}
