@@ -69,3 +69,8 @@ func NewWithConfig(cfg *types.Config) *Table {
 func (t *Table) ColCount() int {
 	return len(t.colWidths)
 }
+
+// RowCount returns the number of rows in the Table
+func (t *Table) RowCount() int {
+	return len(t.rowStarts)
+}

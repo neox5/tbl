@@ -47,5 +47,8 @@ func main() {
 	fmt.Println("\nGrid Visualization:")
 	t.PrintGrid()
 
+	fmt.Println("\nTable State:")
+	t.PrintDebug()
+
 	fmt.Println("\nInternal architecture test completed successfully!")
 }
