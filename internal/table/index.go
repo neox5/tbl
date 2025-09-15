@@ -1,7 +1,7 @@
 package table
 
-// updateColIndex updates the column index for the given cell
-func (t *Table) updateColIndex(cellIdx int, colStart, colSpan int) {
+// addColIndex adds cell to column index
+func (t *Table) addColIndex(cellIdx int, colStart, colSpan int) {
 	for i := range colSpan {
 		col := colStart + i
 		if t.colIndex[col] == nil {
@@ -11,8 +11,8 @@ func (t *Table) updateColIndex(cellIdx int, colStart, colSpan int) {
 	}
 }
 
-// updateRowIndex updates the row index for the given cell
-func (t *Table) updateRowIndex(cellIdx int, rowStart, rowSpan int) {
+// addRowIndex adds cell to row index
+func (t *Table) addRowIndex(cellIdx int, rowStart, rowSpan int) {
 	for i := range rowSpan {
 		row := rowStart + i
 		if t.rowIndex[row] == nil {

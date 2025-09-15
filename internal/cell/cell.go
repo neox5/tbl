@@ -6,10 +6,6 @@ import (
 	"github.com/neox5/tbl/types"
 )
 
-const (
-	COL_MIN_WIDTH = 1
-)
-
 // Cell is the concrete cell implementation
 type Cell struct {
 	content string
@@ -26,9 +22,43 @@ func New() *Cell {
 		content: "",
 		hAlign:  types.Left,
 		vAlign:  types.Top,
-		col:     Axis{Span: 1, Weight: 1},
-		row:     Axis{Span: 1, Weight: 1},
+		col:     NewAxis(1),
+		row:     NewAxis(1),
 	}
+}
+
+// NewColFlex creates a new cell with flexible column dimension
+// opts: minSpan, maxSpan, weight
+func NewColFlex(opts ...int) *Cell {
+	if len(opts) > 3 {
+		panic("NewColFlex: too many options (max 3: minSpan, maxSpan, weight)")
+	}
+	return New().WithColFlex(opts...)
+}
+
+// NewRowFlex creates a new cell with flexible row dimension
+// opts: minSpan, maxSpan, weight
+func NewRowFlex(opts ...int) *Cell {
+	if len(opts) > 3 {
+		panic("NewRowFlex: too many options (max 3: minSpan, maxSpan, weight)")
+	}
+	return New().WithRowFlex(opts...)
+}
+
+// NewFlex creates a new cell with flexible column and row dimensions
+// opts: colMin, colMax, colWeight, rowMin, rowMax, rowWeight
+func NewFlex(opts ...int) *Cell {
+	if len(opts) > 6 {
+		panic("NewFlex: too many options (max 6: colMin, colMax, colWeight, rowMin, rowMax, rowWeight)")
+	}
+	
+	colOpts := opts[:3]
+	rowOpts := []int{}
+	if len(opts) > 3 {
+		rowOpts = opts[3:]
+	}
+	
+	return New().WithColFlex(colOpts...).WithRowFlex(rowOpts...)
 }
 
 // WithContent sets the cell content
@@ -44,10 +74,60 @@ func (c *Cell) WithAlign(h types.HorizontalAlignment, v types.VerticalAlignment)
 	return c
 }
 
+// WithColSpan sets the column span
+func (c *Cell) WithColSpan(span int) *Cell {
+	c.col = NewAxis(span)
+	return c
+}
+
+// WithRowSpan sets the row span
+func (c *Cell) WithRowSpan(span int) *Cell {
+	c.row = NewAxis(span)
+	return c
+}
+
 // WithSpan sets the column and row span
-func (c *Cell) WithSpan(col, row int) *Cell {
-	c.col.Span = col
-	c.row.Span = row
+func (c *Cell) WithSpan(colSpan, rowSpan int) *Cell {
+	c.col = NewAxis(colSpan)
+	c.row = NewAxis(rowSpan)
+	return c
+}
+
+// WithColFlex sets flexible column span
+// opts: minSpan, maxSpan, weight
+func (c *Cell) WithColFlex(opts ...int) *Cell {
+	minSpan, maxSpan, weight := 1, AxisNoCap, 1
+
+	if len(opts) > 0 {
+		minSpan = opts[0]
+	}
+	if len(opts) > 1 {
+		maxSpan = opts[1]
+	}
+	if len(opts) > 2 {
+		weight = opts[2]
+	}
+
+	c.col = NewFlexAxis(minSpan, maxSpan, weight)
+	return c
+}
+
+// WithRowFlex sets flexible row span
+// opts: minSpan, maxSpan, weight
+func (c *Cell) WithRowFlex(opts ...int) *Cell {
+	minSpan, maxSpan, weight := 1, AxisNoCap, 1
+
+	if len(opts) > 0 {
+		minSpan = opts[0]
+	}
+	if len(opts) > 1 {
+		maxSpan = opts[1]
+	}
+	if len(opts) > 2 {
+		weight = opts[2]
+	}
+
+	c.row = NewFlexAxis(minSpan, maxSpan, weight)
 	return c
 }
 
@@ -62,33 +142,14 @@ func (c *Cell) Content() string {
 	return c.content
 }
 
-// DisplayWidth calculates the display width of the cell content.
-// When column is FLEX it needs to be fixed to report a width.
-func (c *Cell) DisplayWidth() int {
-	if c.col.IsFlex() && ! c.col.IsFixed() {
-		return 0
-	}
+// Width returns the display width of the cell content
+func (c *Cell) Width() int {
 	return len(stripAnsiCodes(c.content))
-}
-
-// ColWidth calculates the column width of the cell.
-// FLEX cells needs to be fixed/determined,
-// otherwise it will report the COL_MIN_WIDTH
-func (c *Cell) ColWidth() int {
-	if c.col.IsFixed() {
-		return c.col.End - c.col.Start
-	}
-	return COL_MIN_WIDTH
 }
 
 // Height calculates the display height of the cell content
 func (c *Cell) Height() int {
 	return 1
-}
-
-// Span return the column and row span
-func (c *Cell) Span() (int, int) {
-	return c.col.Span, c.row.Span
 }
 
 // HAlign returns the horizontal alignment
