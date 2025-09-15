@@ -5,29 +5,47 @@ import (
 
 	"github.com/neox5/tbl/internal/cell"
 	"github.com/neox5/tbl/internal/table"
-	"github.com/neox5/tbl/types"
 )
 
 func main() {
-	fmt.Println("=== TBL Internal Architecture Test ===")
+	fmt.Println("=== TBL Grid Visualization Test ===")
 
 	// Test basic table creation
 	t := table.New()
 
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Printf("Panic recovered: %v\n", r)
+			fmt.Printf("\nPANIC DETECTED\n")
+			fmt.Printf("Error: %v\n\n", r)
+			fmt.Println("Current Grid State:")
+			t.PrintGrid()
+			fmt.Println()
 			t.PrintDebug()
+			return
 		}
 	}()
 
-	// Test header row only
+	// Flex title row
 	t.AddRow(
-		cell.New().WithContent("Name").WithAlign(types.Center, types.Top),
-		cell.New().WithContent("Age").WithAlign(types.Center, types.Top),
-		cell.New().WithContent("City").WithAlign(types.Center, types.Top),
+		cell.NewColFlex().WithContent("Table Title"),
 	)
 
+	// Header row
+	t.AddRow(
+		cell.New().WithContent("Name"),
+		cell.New().WithContent("Age"),
+		cell.New().WithContent("City"),
+	)
 
-	fmt.Println("Internal architecture test completed successfully!")
+	// Data row
+	t.AddRow(
+		cell.New().WithContent("John"),
+		cell.New().WithContent("25"),
+		cell.New().WithContent("NYC"),
+	)
+
+	fmt.Println("\nGrid Visualization:")
+	t.PrintGrid()
+
+	fmt.Println("\nInternal architecture test completed successfully!")
 }

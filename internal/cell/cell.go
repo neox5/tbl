@@ -51,13 +51,13 @@ func NewFlex(opts ...int) *Cell {
 	if len(opts) > 6 {
 		panic("NewFlex: too many options (max 6: colMin, colMax, colWeight, rowMin, rowMax, rowWeight)")
 	}
-	
+
 	colOpts := opts[:3]
 	rowOpts := []int{}
 	if len(opts) > 3 {
 		rowOpts = opts[3:]
 	}
-	
+
 	return New().WithColFlex(colOpts...).WithRowFlex(rowOpts...)
 }
 
