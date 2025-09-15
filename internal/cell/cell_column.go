@@ -40,12 +40,12 @@ func (c *Cell) SetColStart(start int) {
 	c.col.SetStart(start)
 }
 
-// ColCanGrowTo returns true if flex column can grow to the given span
-func (c *Cell) ColCanGrowTo(span int) bool {
-	return c.col.CanGrowTo(span)
+// ColCanGrow returns true if flex column can grow
+func (c *Cell) ColCanGrow() bool {
+	return c.col.CanGrow()
 }
 
-// SetColSpan sets the current column span (used by table for flex resolution)
-func (c *Cell) SetColSpan(span int) {
-	c.col.SetSpan(span)
+// AddColSpan adds to the current column span (used by table for flex resolution)
+func (c *Cell) AddColSpan(add int) {
+	c.col.AddSpan(add)
 }

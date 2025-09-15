@@ -78,38 +78,6 @@ func (t *Table) addIndices(idx int, c *cell.Cell) {
 	t.addRowIndex(idx, c.RowStart(), c.RowSpan())
 }
 
-// resolveRow resolves flexible column spans for the current row
-func (t *Table) resolveRow() {
-	if len(t.openFlexCells) == 0 {
-		return
-	}
-	
-	// Calculate total column span used in current row
-	colCount := 0
-	flexCells := make([]*cell.Cell, 0)
-	flexWeights := 0
-	for _, idx := range t.CellsInRow(t.row) {
-		c := t.cells[idx]
-		colCount += c.ColSpan()
-
-		if c.IsColFlex() {
-			flexCells = append(flexCells, c)
-			flexWeights += c.ColWeight()
-		}
-	}
-	
-	// Only resolve flex cells if row is under-filled
-	// Over-filled rows will be caught by validation
-	colsAvailable := t.ColCount() - colCount
-	if colsAvailable <= 0 {
-		return
-	}
-
-	// TODO: Distribute available columns among flex cells by weight
-	// TODO: Respect maxSpan constraints
-	// TODO: Update cell spans and table state
-}
-
 // initWithFirstRow initializes column arrays from first row
 func (t *Table) initWithFirstRow(cells []*cell.Cell) {
 	totalCols := 0
@@ -120,11 +88,84 @@ func (t *Table) initWithFirstRow(cells []*cell.Cell) {
 	t.colLevels = make([]int, totalCols)
 }
 
+// resolveRow resolves flexible column spans for the current row
+func (t *Table) resolveRow() {
+	if len(t.openFlexCells) == 0 {
+		return
+	}
+	
+	flexCells := t.collectFlexCells()
+	if len(flexCells) == 0 {
+		return
+	}
+	
+	colsAvailable := t.calcAvailableCols()
+	if colsAvailable <= 0 {
+		return
+	}
+	
+	distributeCols(flexCells, colsAvailable)
+
+	// Update levels for expanded flex cells
+	for _, c := range flexCells {
+		t.updateLevels(c)
+	}
+}
+
 // validateRow ensures all columns are filled
 func (t *Table) validateRow() {
 	for i, level := range t.colLevels {
 		if level == 0 {
 			panic(fmt.Sprintf("incomplete row %d: column %d not filled", t.row, i))
 		}
+	}
+}
+
+// collectFlexCells returns flex cells in current row
+func (t *Table) collectFlexCells() []*cell.Cell {
+	flexCells := make([]*cell.Cell, 0)
+	for _, idx := range t.CellsInRow(t.row) {
+		c := t.cells[idx]
+		if c.IsColFlex() {
+			flexCells = append(flexCells, c)
+		}
+	}
+	return flexCells
+}
+
+// calcAvailableCols returns columns available for distribution
+func (t *Table) calcAvailableCols() int {
+	colCount := 0
+	for _, idx := range t.CellsInRow(t.row) {
+		c := t.cells[idx]
+		colCount += c.ColSpan()
+	}
+	return t.ColCount() - colCount
+}
+
+// distributeCols distributes available columns to flex cells respecting maxSpan
+func distributeCols(flexCells []*cell.Cell, remaining int) {
+	activeCells := make([]*cell.Cell, 0, len(flexCells))
+	for _, c := range flexCells {
+		if c.ColCanGrow() {
+			activeCells = append(activeCells, c)
+		}
+	}
+	
+	for remaining > 0 && len(activeCells) > 0 {
+		// Filter out cells that can no longer grow
+		newActive := activeCells[:0]
+		for _, c := range activeCells {
+			if remaining <= 0 {
+				break
+			}
+			c.AddColSpan(1)
+			remaining--
+			
+			if c.ColCanGrow() {
+				newActive = append(newActive, c)
+			}
+		}
+		activeCells = newActive
 	}
 }

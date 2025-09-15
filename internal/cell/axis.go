@@ -2,7 +2,7 @@ package cell
 
 // Constants for flexible cell dimensions
 const (
-	 AxisNoCap = -1 // Indicates no end cap boundary
+	AxisNoCap = -1 // Indicates no end cap boundary
 )
 
 // Axis represents a cell's dimension along one axis (column or row)
@@ -88,24 +88,27 @@ func (a *Axis) SetStart(start int) {
 	a.start = start
 }
 
-// SetSpan sets the current span (used by table for flex resolution)
-func (a *Axis) SetSpan(span int) {
-	if !a.IsFlex() {
-		panic("Axis: cannot change span of fixed axis")
-	}
-	if span < a.span {
-		panic("Axis: cannot shrink below current span")
-	}
-	if a.maxSpan != AxisNoCap && span > a.maxSpan {
-		panic("Axis: cannot set span above maximum")
-	}
-	a.span = span
-}
-
-// CanGrowTo returns true if flex axis can grow to the given span
-func (a Axis) CanGrowTo(span int) bool {
+// CanGrow returns true if flex axis can grow
+func (a Axis) CanGrow() bool {
 	if !a.IsFlex() {
 		return false
 	}
-	return span >= a.span && (a.maxSpan == AxisNoCap || span <= a.maxSpan)
+	return a.maxSpan == AxisNoCap || a.span < a.maxSpan
 }
+
+// AddSpan adds to the current span
+func (a *Axis) AddSpan(add int) {
+	if !a.IsFlex() {
+		panic("Axis: cannot add span to fixed axis")
+	}
+	if add <= 0 {
+		panic("Axis: add must be greater than 0")
+	}
+	
+	newSpan := a.span + add
+	if a.maxSpan != AxisNoCap && newSpan > a.maxSpan {
+		panic("Axis: cannot add span above maximum")
+	}
+	a.span = newSpan
+}
+
