@@ -24,7 +24,6 @@ type Table struct {
 	row, col  int  // next row/col index
 
 	// Indices for optimization (future use)
-	colIndex map[int][]int // cells overlapping a column
 	rowIndex map[int][]int // cells overlapping a row
 }
 
@@ -43,7 +42,6 @@ func New() *Table {
 		nextIndex: 0,
 		row:       -1, // First advanceRow() brings us to row 0
 		col:       0,
-		colIndex:  make(map[int][]int),
 		rowIndex:  make(map[int][]int),
 	}
 }

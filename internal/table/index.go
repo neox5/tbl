@@ -1,16 +1,5 @@
 package table
 
-// addColIndex adds cell to column index
-func (t *Table) addColIndex(cellIdx int, colStart, colSpan int) {
-	for i := range colSpan {
-		col := colStart + i
-		if t.colIndex[col] == nil {
-			t.colIndex[col] = make([]int, 0)
-		}
-		t.colIndex[col] = append(t.colIndex[col], cellIdx)
-	}
-}
-
 // addRowIndex adds cell to row index
 func (t *Table) addRowIndex(cellIdx int, rowStart, rowSpan int) {
 	for i := range rowSpan {
@@ -20,11 +9,6 @@ func (t *Table) addRowIndex(cellIdx int, rowStart, rowSpan int) {
 		}
 		t.rowIndex[row] = append(t.rowIndex[row], cellIdx)
 	}
-}
-
-// CellsInCol returns the cell indices that overlap the specified column
-func (t *Table) CellsInCol(col int) []int {
-	return t.colIndex[col]
 }
 
 // CellsInRow returns the cell indices that overlap the specified row

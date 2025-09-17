@@ -77,7 +77,8 @@ func (t *Table) addCell(c *cell.Cell) {
 	// Update state
 	t.updateWidths(c)
 	t.updateLevels(c)
-	t.addIndices(idx, c)
+	
+	t.addRowIndex(idx, c.RowStart(), c.RowSpan())
 }
 
 // updateWidths updates column widths based on cell content
@@ -107,12 +108,6 @@ func (t *Table) updateLevels(c *cell.Cell) {
 	for i := range c.ColSpan() {
 		t.colLevels[c.ColStart()+i] = c.RowSpan()
 	}
-}
-
-// addIndices adds cell to column and row indices
-func (t *Table) addIndices(idx int, c *cell.Cell) {
-	t.addColIndex(idx, c.ColStart(), c.ColSpan())
-	t.addRowIndex(idx, c.RowStart(), c.RowSpan())
 }
 
 // initWithFirstRow initializes column arrays from first row
