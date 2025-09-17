@@ -18,7 +18,14 @@ func (t *Table) PrintGrid() {
 
 		for _, cellIdx := range cellIndices {
 			cell := t.cells[cellIdx]
-			label := string(rune('A' + cellIdx))
+
+			// Use lowercase for flex cells, uppercase for fixed cells
+			var label string
+			if cell.IsColFlex() {
+				label = string(rune('a' + cellIdx))
+			} else {
+				label = string(rune('A' + cellIdx))
+			}
 
 			for r := range cell.RowSpan() {
 				for c := range cell.ColSpan() {

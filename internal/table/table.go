@@ -19,6 +19,7 @@ type Table struct {
 	colLevels []int
 	hLines    []bool
 	flexRows  map[int]bool
+	flexCols  map[int]bool
 	colsFixed bool // true when column structure is finalized
 	nextIndex int  // next cell index
 	row, col  int  // next row/col index
@@ -38,6 +39,7 @@ func New() *Table {
 		colWidths: []int{},
 		colLevels: []int{},
 		flexRows:  make(map[int]bool),
+		flexCols:  make(map[int]bool),
 		colsFixed: false,
 		nextIndex: 0,
 		row:       -1, // First advanceRow() brings us to row 0
