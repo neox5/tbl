@@ -1,6 +1,8 @@
 package grid
 
-// Area is a rectangle of cells identified by index and span.
+import "fmt"
+
+// Area is a rectangle of cells. Fields are private and mutable via methods.
 type Area struct {
 	col     int
 	row     int
@@ -10,12 +12,53 @@ type Area struct {
 
 func NewArea(col, row, colSpan, rowSpan int) Area {
 	if col < 0 || row < 0 || colSpan <= 0 || rowSpan <= 0 {
-		panic("grid: invalid area")
+		panic(fmt.Errorf("grid: invalid area (%d,%d,%d,%d)", col, row, colSpan, rowSpan))
 	}
-	return Area{col, row, colSpan, rowSpan}
+	return Area{col: col, row: row, colSpan: colSpan, rowSpan: rowSpan}
 }
 
+// Accessors
 func (a Area) Col() int     { return a.col }
 func (a Area) Row() int     { return a.row }
 func (a Area) ColSpan() int { return a.colSpan }
 func (a Area) RowSpan() int { return a.rowSpan }
+func (a Area) ColEnd() int  { return a.col + a.colSpan } // exclusive
+func (a Area) RowEnd() int  { return a.row + a.rowSpan } // exclusive
+
+// Mutators
+func (a *Area) MoveTo(col, row int) {
+	if col < 0 || row < 0 {
+		panic("grid: MoveTo negative index")
+	}
+	a.col, a.row = col, row
+}
+
+func (a *Area) MoveBy(dCol, dRow int) {
+	nc, nr := a.col+dCol, a.row+dRow
+	if nc < 0 || nr < 0 {
+		panic("grid: MoveBy would go negative")
+	}
+	a.col, a.row = nc, nr
+}
+
+func (a *Area) Resize(colSpan, rowSpan int) {
+	if colSpan <= 0 || rowSpan <= 0 {
+		panic("grid: Resize non-positive span")
+	}
+	a.colSpan, a.rowSpan = colSpan, rowSpan
+}
+
+// Iterators (no allocations)
+func (a Area) ForRows(do func(row int)) {
+	for r := a.row; r < a.RowEnd(); r++ {
+		do(r)
+	}
+}
+
+func (a Area) ForEachCell(do func(col, row int)) {
+	for r := a.row; r < a.RowEnd(); r++ {
+		for c := a.col; c < a.ColEnd(); c++ {
+			do(c, r)
+		}
+	}
+}
