@@ -35,3 +35,8 @@ func (v Vec) Sub(u Vec) Vec {
 func (v Vec) Scale(k int) Vec {
 	return Vec{dx: k * v.dx, dy: k * v.dy}
 }
+
+// IsZero reports whether v == (0,0).
+func (v Vec) IsZero() bool {
+	return v.dx == 0 && v.dy == 0
+}
