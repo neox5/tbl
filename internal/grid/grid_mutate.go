@@ -26,7 +26,7 @@ func (g *Grid) AddRow(h int) {
 
 // ShiftRightRow shifts one step to the right on 'row' starting at column 'at'.
 // Moves refs only. Preserves rectangles via recursion.
-// Preconditions per call: last column on the row must be Nil.
+// Preconditions per call: last column on the initiating row must be Nil.
 func (g *Grid) ShiftRightRow(row, at int) error {
 	if row < 0 || row >= g.Rows() {
 		return fmt.Errorf("grid: row out of range")
@@ -34,6 +34,11 @@ func (g *Grid) ShiftRightRow(row, at int) error {
 	if at < 0 || at >= g.Cols()-1 {
 		return fmt.Errorf("grid: 'at' out of range or no space to the right")
 	}
+	// Top-level preflight: require spare space on the initiating row only.
+	if g.cells[row][g.Cols()-1] != Nil {
+		return fmt.Errorf("grid: last column occupied on row %d", row)
+	}
+
 	moved := make(map[Ref]struct{})              // areas scheduled to mutate once at end
 	movedOnRow := make(map[int]map[Ref]struct{}) // per-row refs already shifted
 
@@ -48,11 +53,6 @@ func (g *Grid) ShiftRightRow(row, at int) error {
 
 func (g *Grid) shiftRow(row, at int, moved map[Ref]struct{}, movedOnRow map[int]map[Ref]struct{}) error {
 	r := g.cells[row]
-
-	// Per-call preflight: last column must be empty.
-	if r[g.Cols()-1] != Nil {
-		return fmt.Errorf("grid: last column occupied on row %d", row)
-	}
 
 	lastSrc := g.Cols() - 2
 	if at > lastSrc {
@@ -71,6 +71,8 @@ func (g *Grid) shiftRow(row, at int, moved map[Ref]struct{}, movedOnRow map[int]
 		// First touch of this area across the whole operation.
 		if _, seen := moved[ref]; !seen {
 			a := g.areaByRef(ref)
+			// Mark before recursing to break cycles across rows.
+			moved[ref] = struct{}{}
 			// Recurse for other rows spanned by this area at its left edge.
 			for rr := a.Row(); rr < a.RowEnd(); rr++ {
 				if rr == row {
@@ -80,7 +82,6 @@ func (g *Grid) shiftRow(row, at int, moved map[Ref]struct{}, movedOnRow map[int]
 					return err
 				}
 			}
-			moved[ref] = struct{}{}
 		}
 
 		// Avoid shifting the same ref twice on this row.
