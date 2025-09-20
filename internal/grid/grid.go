@@ -32,11 +32,9 @@ func New(numCols, numRows int) *Grid {
 	return g
 }
 
-// Dimensions from sizing arrays.
-func (g *Grid) Cols() int { return len(g.cols) }
-func (g *Grid) Rows() int { return len(g.rows) }
-
-// Extending grid.
+func (g *Grid) Cols() int     { return len(g.cols) }
+func (g *Grid) Rows() int     { return len(g.rows) }
+func (g *Grid) Cells() [][]ID { return g.cells }
 
 func (g *Grid) AddCol() {
 	g.cols = append(g.cols, 0) // width default 0
