@@ -22,31 +22,19 @@ func (g *Grid) indexAdd(id ID) {
 	}
 }
 
-// indexRemove: find id in each spanned row and delete in-place.
-func (g *Grid) indexRemove(id ID) {
-	a := g.areas[id]
-	if a == nil {
-		panic(fmt.Errorf("grid: indexRemove unknown id=%d", id))
+// cmpByCol orders IDs by their Area.Col().
+func (g *Grid) cmpByCol(a, b ID) int {
+	aa, bb := g.areas[a], g.areas[b]
+	if aa == nil || bb == nil {
+		panic(fmt.Errorf("grid: cmpByCol missing area a=%d b=%d", a, b))
 	}
-	for i := range a.rowSpan {
-		r := a.row + i
-		rowIDs := g.rowIndex[r]
-		if len(rowIDs) == 0 {
-			continue
-		}
-		if idx := slices.Index(rowIDs, id); idx >= 0 {
-			rowIDs = slices.Delete(rowIDs, idx, idx+1)
-			if len(rowIDs) == 0 {
-				delete(g.rowIndex, r)
-			} else {
-				g.rowIndex[r] = rowIDs
-			}
-		}
+	ca, cb := aa.Col(), bb.Col()
+	switch {
+	case ca < cb:
+		return -1
+	case ca > cb:
+		return 1
+	default:
+		return 0
 	}
-}
-
-// indexUpdate: remove then add using current Area.
-func (g *Grid) indexUpdate(id ID) {
-	g.indexRemove(id)
-	g.indexAdd(id)
 }
