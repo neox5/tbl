@@ -17,7 +17,7 @@ func (t *Table) printDebug() string {
 	// Header with internal state
 	b.WriteString("=== Table Debug ===\n")
 	b.WriteString(fmt.Sprintf("Cols: %d, Rows: %d\n", t.g.Cols(), t.g.Rows()))
-	b.WriteString(fmt.Sprintf("Cursor: (%d, %d)\n", t.cur.row, t.cur.col))
+	b.WriteString(fmt.Sprintf("Cursor: (%d, %d)\n", t.cur.Row(), t.cur.Col()))
 	b.WriteString(fmt.Sprintf("Cells: %d\n", len(t.cells)))
 	b.WriteString("\n")
 
@@ -40,7 +40,7 @@ func (t *Table) printDebug() string {
 // Format: {row}: [{cells}] or {row}: [{cells}/ for cursor position.
 func (t *Table) renderRow(row int) string {
 	var b strings.Builder
-	
+
 	b.WriteString(fmt.Sprintf("%d: [", row))
 
 	cols := t.g.Cols()
@@ -64,8 +64,8 @@ func (t *Table) renderRow(row int) string {
 		}
 
 		cell := t.cells[cellID]
-		area := t.g.GetArea(grid.ID(cellID))
-		
+		area, _ := t.g.Get(grid.ID(cellID))
+
 		// Get cell letter
 		letter := t.getCellLetter(cellID, cell.typ)
 
@@ -87,7 +87,7 @@ func (t *Table) renderRow(row int) string {
 	}
 
 	// Cursor indicator: show / if row matches cursor and row is incomplete
-	if row == t.cur.row && t.cur.col > 0 && t.cur.col < cols {
+	if row == t.cur.Row() && t.cur.Col() > 0 && t.cur.Col() < cols {
 		b.WriteString("/")
 	} else {
 		b.WriteString("]")
@@ -99,8 +99,8 @@ func (t *Table) renderRow(row int) string {
 // findCellAt returns cell ID at grid position, or 0 if none.
 func (t *Table) findCellAt(row, col int) ID {
 	for id := range t.cells {
-		area := t.g.GetArea(grid.ID(id))
-		if area == nil {
+		area, ok := t.g.Get(grid.ID(id))
+		if !ok {
 			continue
 		}
 		if area.Row() <= row && row < area.RowEnd() &&
@@ -116,10 +116,9 @@ func (t *Table) findCellAt(row, col int) ID {
 func (t *Table) getCellLetter(id ID, typ CellType) string {
 	// Use ID for letter assignment (cycling through alphabet)
 	letterIdx := (int(id) - 1) % 26
-	
+
 	if typ == Static {
 		return string(rune('A' + letterIdx))
 	}
 	return string(rune('a' + letterIdx))
 }
-
