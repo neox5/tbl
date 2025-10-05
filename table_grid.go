@@ -4,9 +4,15 @@ package tbl
 func (t *Table) addRow() {
 	t.cur.NextRow()
 
+	t.g.AddRow() // add row to grid
 	t.rows = append(t.rows, nil)
 
-	t.g.AddRow() // add row to grid
+	// reduce colLevels
+	for i := range len(t.cols) {
+		if t.colLevels[i] > 0 {
+			t.colLevels[i]--
+		}
+	}
 }
 
 // addCols grows grid columns to accommodate cell at cursor.
