@@ -3,6 +3,7 @@ package tbl
 import (
 	"fmt"
 
+	"github.com/neox5/tbl/internal/cursor"
 	"github.com/neox5/tbl/internal/grid"
 )
 
@@ -23,10 +24,14 @@ const (
 // Table manages incremental table construction with flex/static cells.
 type Table struct {
 	g         *grid.Grid
+	cur       *cursor.Cursor
+	rows      [][]ID
+	cols      [][]ID
+	colWidths []int
 	cells     map[ID]*cell
-	cur       cursor
-	colWidth  map[int]int
-	rowHeight map[int]int
+
+	colsFixed bool
+	colLevels []int
 }
 
 // New creates a new Table with zero columns.
@@ -36,13 +41,21 @@ func New() *Table {
 
 // NewWithCols creates a new Table with initial column capacity.
 func NewWithCols(cols int) *Table {
-	return &Table{
-		g:         grid.New(0, cols),
-		cells:     make(map[ID]*cell),
-		cur:       cursor{row: -1, col: 0},
-		colWidth:  make(map[int]int),
-		rowHeight: make(map[int]int),
+	if cols < 0 {
+		panic("tbl: invalid cols value")
 	}
+
+	t := &Table{
+		g:         grid.New(0, cols),
+		cur:       cursor.New(),
+		rows:      make([][]ID, 0),
+		cols:      make([][]ID, cols),
+		colWidths: make([]int, cols),
+		cells:     make(map[ID]*cell),
+		colLevels: make([]int, cols),
+	}
+
+	return t
 }
 
 // AddRow advances to the next row for cell placement.
@@ -54,16 +67,109 @@ func (t *Table) AddRow() *Table {
 // AddCell adds a cell at the current cursor position.
 // rowSpan and colSpan define cell dimensions (must be > 0).
 // Returns *Table for chaining. Panics on invalid input.
+//
+// Column expansion behavior:
+//   - If no columns exist, expands by colSpan
+//   - If colsFixed is false, expands when no free columns available
+//   - If colsFixed is true and no space, panics
+//
+// Placement validation:
+//   - Requires sufficient contiguous free columns for colSpan
+//   - Panics if cell cannot fit in available space
 func (t *Table) AddCell(ct CellType, rowSpan, colSpan int) *Table {
 	if rowSpan <= 0 || colSpan <= 0 {
-		panic(fmt.Errorf("tbl: invalid span rowSpan=%d colSpan=%d", rowSpan, colSpan))
+		panic(fmt.Sprintf("tbl: invalid span rowSpan=%d colSpan=%d", rowSpan, colSpan))
 	}
 
-	if t.cur.row == 0 {
+	if t.cur.Row() == -1 {
+		panic("tbl: no row to add cell")
+	}
+
+	// Step 1: Ensure columns exist
+	if len(t.cols) == 0 {
 		t.addCols(colSpan)
+	} else {
+		// Step 2: Ensure column space available
+		t.ensureColumnSpace(colSpan)
+
+		// Step 3: Validate span fits
+		t.validateSpanFit(colSpan)
 	}
 
 	t.addCell(ct, rowSpan, colSpan)
 
 	return t
+}
+
+// ensureColumnSpace verifies column availability and expands if needed.
+// Panics if expansion not possible and no free columns exist.
+func (t *Table) ensureColumnSpace(colSpan int) {
+	_, _, ok := t.nextZeroRun(t.cur.Col())
+	if !ok {
+		// No free columns found
+		if t.colsFixed {
+			panic("tbl: no free columns and column expansion disabled")
+		}
+		t.addCols(colSpan)
+	}
+}
+
+// validateSpanFit checks if colSpan fits in next available free column run.
+// Panics if insufficient contiguous space exists.
+func (t *Table) validateSpanFit(colSpan int) {
+	pos, span, ok := t.nextZeroRun(t.cur.Col())
+	if !ok {
+		panic("tbl: no free column run found")
+	}
+
+	if colSpan > span {
+		panic(fmt.Sprintf("tbl: cell span %d exceeds available space %d at column %d",
+			colSpan, span, pos))
+	}
+}
+
+// PrintDebug renders table structure in TBL Grid Notation format.
+// Shows grid layout with cell types and current cursor position.
+// Returns empty string if table has no rows.
+// For debug/development purposes.
+func (t *Table) PrintDebug() string {
+	return t.printDebug()
+}
+
+// spanFit returns true if the span can fit at the current row position
+func (t *Table) spanFit(span int) bool {
+	r := 0
+	for i := t.cur.Col(); i < len(t.cols); i++ {
+		if t.colLevels[i] == 0 {
+			r++
+			continue
+		}
+		break
+	}
+	return r >= span
+}
+
+// nextZeroRun returns (pos, count, ok) for the next run of 0s in colLevels.
+func (t *Table) nextZeroRun(from int) (pos, count int, ok bool) {
+	if from < 0 {
+		from = 0
+	}
+	n := len(t.colLevels)
+	if n == 0 || from >= n {
+		return -1, 0, false
+	}
+
+	i := from
+	for i < n && t.colLevels[i] != 0 {
+		i++
+	}
+	if i >= n {
+		return -1, 0, false
+	}
+
+	j := i
+	for j < n && t.colLevels[j] == 0 {
+		j++
+	}
+	return i, j - i, true
 }

@@ -15,7 +15,7 @@ type cell struct {
 
 // addCell places cell in grid, creates metadata, and advances cursor.
 func (t *Table) addCell(typ CellType, rowSpan, colSpan int) {
-	row, col := t.cur.position()
+	row, col := t.cur.Pos()
 
 	// Create and place area in grid
 	a := grid.NewArea(row, col, rowSpan, colSpan)
@@ -24,10 +24,11 @@ func (t *Table) addCell(typ CellType, rowSpan, colSpan int) {
 		panic(fmt.Errorf("tbl: failed to add cell: %w", err))
 	}
 
-	// Create cell metadata
-	c := &cell{id: ID(gid), typ: typ}
-	t.cells[ID(gid)] = c
+	t.cells[ID(gid)] = &cell{id: ID(gid), typ: typ}
+	for i := col; i < col+colSpan; i++ {
+		t.colLevels[i] = rowSpan
+	}
 
 	// Advance cursor
-	t.cur.advance(colSpan)
+	t.cur.Advance(colSpan)
 }
