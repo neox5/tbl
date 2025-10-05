@@ -21,7 +21,7 @@ func (t *Table) addCell(typ CellType, rowSpan, colSpan int) {
 	a := grid.NewArea(row, col, rowSpan, colSpan)
 	gid, err := t.g.AddArea(a)
 	if err != nil {
-		panic(fmt.Errorf("tbl: failed to add cell: %w", err))
+		panic(fmt.Errorf("tbl: failed to add cell at cursor (%d,%d): %w", t.cur.Row(), t.cur.Col(), err))
 	}
 
 	t.cells[ID(gid)] = &cell{id: ID(gid), typ: typ}

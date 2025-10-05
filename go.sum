@@ -2,3 +2,5 @@ github.com/neox5/btmp v0.2.0 h1:DHOAZH0PReF3JsJPC4gozq/JaEsdqaGkYfQ2fuDcMRM=
 github.com/neox5/btmp v0.2.0/go.mod h1:BxbGeZDypv4BGkoHAT2XwEqZLk+2TpHwsQ9uk3PmbFo=
 github.com/neox5/btmp v0.3.0 h1:c4rg67Cp3Xujfi/En7qlS1VdOYn1CzlAt0D93xGeRzg=
 github.com/neox5/btmp v0.3.0/go.mod h1:BxbGeZDypv4BGkoHAT2XwEqZLk+2TpHwsQ9uk3PmbFo=
+github.com/neox5/btmp v0.3.1 h1:T10sSbEHXyhQovxZ2/QaTgk2LtFktpWTjCe10BQ0W70=
+github.com/neox5/btmp v0.3.1/go.mod h1:BxbGeZDypv4BGkoHAT2XwEqZLk+2TpHwsQ9uk3PmbFo=

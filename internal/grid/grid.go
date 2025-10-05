@@ -67,6 +67,8 @@ func (g *Grid) AddArea(a *Area) (ID, error) {
 
 func (g *Grid) Get(id ID) (*Area, bool) { a, ok := g.areas[id]; return a, ok }
 
+func (g *Grid) Print() string { return g.occ.Print() }
+
 func (g *Grid) allocID() ID {
 	id := g.nextID
 	g.nextID++

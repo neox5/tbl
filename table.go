@@ -78,11 +78,11 @@ func (t *Table) AddRow() *Table {
 //   - Panics if cell cannot fit in available space
 func (t *Table) AddCell(ct CellType, rowSpan, colSpan int) *Table {
 	if rowSpan <= 0 || colSpan <= 0 {
-		panic(fmt.Sprintf("tbl: invalid span rowSpan=%d colSpan=%d", rowSpan, colSpan))
+		panic(fmt.Sprintf("tbl: invalid span rowSpan=%d colSpan=%d at cursor (%d,%d)", rowSpan, colSpan, t.cur.Row(), t.cur.Col()))
 	}
 
 	if t.cur.Row() == -1 {
-		panic("tbl: no row to add cell")
+		panic(fmt.Sprintf("tbl: no row to add cell at cursor (%d,%d)", t.cur.Row(), t.cur.Col()))
 	}
 
 	// Step 1: Ensure columns exist
@@ -134,19 +134,6 @@ func (t *Table) validateSpanFit(colSpan int) {
 // For debug/development purposes.
 func (t *Table) PrintDebug() string {
 	return t.printDebug()
-}
-
-// spanFit returns true if the span can fit at the current row position
-func (t *Table) spanFit(span int) bool {
-	r := 0
-	for i := t.cur.Col(); i < len(t.cols); i++ {
-		if t.colLevels[i] == 0 {
-			r++
-			continue
-		}
-		break
-	}
-	return r >= span
 }
 
 // nextZeroRun returns (pos, count, ok) for the next run of 0s in colLevels.
