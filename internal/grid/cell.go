@@ -1,12 +1,11 @@
 package grid
 
-// Cell identifies a single discrete position in the grid.
+// Cell is addressed row-major.
 type Cell struct {
-	Col int
 	Row int
+	Col int
 }
 
-// Equal returns true if other is the same Cell.
 func (c Cell) Equal(o Cell) bool {
-	return c.Col == o.Col && c.Row == o.Row
+	return c.Row == o.Row && c.Col == o.Col
 }
