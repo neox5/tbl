@@ -18,7 +18,7 @@ func (t *Table) addCell(typ CellType, rowSpan, colSpan int) {
 	row, col := t.cur.position()
 
 	// Create and place area in grid
-	a := grid.NewArea(col, row, colSpan, rowSpan)
+	a := grid.NewArea(row, col, rowSpan, colSpan)
 	gid, err := t.g.AddArea(a)
 	if err != nil {
 		panic(fmt.Errorf("tbl: failed to add cell: %w", err))

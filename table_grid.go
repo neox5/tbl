@@ -2,9 +2,10 @@ package tbl
 
 // addRow ensures cursor row exists in grid.
 func (t *Table) addRow() {
-	for t.cur.row >= t.g.Rows() {
-		t.g.AddRow()
-	}
+	t.cur.nextRow()            // move cursor to next row
+	t.rowHeight[t.cur.row] = 0 // initialize row tracking
+
+	t.g.AddRow() // add row to grid
 }
 
 // addCols grows grid columns to accommodate cell at cursor.

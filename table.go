@@ -37,7 +37,7 @@ func New() *Table {
 // NewWithCols creates a new Table with initial column capacity.
 func NewWithCols(cols int) *Table {
 	return &Table{
-		g:         grid.New(cols, 0),
+		g:         grid.New(0, cols),
 		cells:     make(map[ID]*cell),
 		cur:       cursor{row: -1, col: 0},
 		colWidth:  make(map[int]int),
@@ -48,20 +48,22 @@ func NewWithCols(cols int) *Table {
 // AddRow advances to the next row for cell placement.
 func (t *Table) AddRow() *Table {
 	t.addRow()
-	t.cur.nextRow()
 	return t
 }
 
 // AddCell adds a cell at the current cursor position.
 // rowSpan and colSpan define cell dimensions (must be > 0).
 // Returns *Table for chaining. Panics on invalid input.
-func (t *Table) AddCell(typ CellType, rowSpan, colSpan int) *Table {
+func (t *Table) AddCell(ct CellType, rowSpan, colSpan int) *Table {
 	if rowSpan <= 0 || colSpan <= 0 {
 		panic(fmt.Errorf("tbl: invalid span rowSpan=%d colSpan=%d", rowSpan, colSpan))
 	}
 
-	t.addCols(colSpan)
-	t.addCell(typ, rowSpan, colSpan)
+	if t.cur.row == 0 {
+		t.addCols(colSpan)
+	}
+
+	t.addCell(ct, rowSpan, colSpan)
 
 	return t
 }
