@@ -10,17 +10,6 @@ import (
 // ID identifies a cell in the table.
 type ID grid.ID
 
-// CellType indicates whether a cell is static or flexible.
-type CellType int
-
-const (
-	// Static cells have fixed column spans.
-	Static CellType = iota
-
-	// Flex cells can expand to fill available space.
-	Flex
-)
-
 // Table manages incremental table construction with flex/static cells.
 type Table struct {
 	g         *grid.Grid
