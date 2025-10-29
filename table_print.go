@@ -3,8 +3,6 @@ package tbl
 import (
 	"fmt"
 	"strings"
-
-	"github.com/neox5/tbl/internal/grid"
 )
 
 // printDebug renders grid structure using TBL Grid Notation from README.
@@ -64,13 +62,12 @@ func (t *Table) renderRow(row int) string {
 		}
 
 		cell := t.cells[cellID]
-		area, _ := t.g.Get(grid.ID(cellID))
 
 		// Get cell letter
 		letter := t.getCellLetter(cellID, cell.typ)
 
 		// Render span
-		for i := range area.ColSpan() {
+		for i := range cell.cSpan {
 			if i > 0 {
 				b.WriteString(" ") // space instead of | for span
 			}
@@ -79,11 +76,11 @@ func (t *Table) renderRow(row int) string {
 		}
 
 		// Add separator if not last column
-		if col+area.ColSpan() < cols {
+		if col+cell.cSpan < cols {
 			b.WriteString("|")
 		}
 
-		col += area.ColSpan() - 1 // advance by span (loop will +1)
+		col += cell.cSpan - 1 // advance by span (loop will +1)
 	}
 
 	// Cursor indicator: show / if row matches cursor and row is incomplete
@@ -98,13 +95,9 @@ func (t *Table) renderRow(row int) string {
 
 // findCellAt returns cell ID at grid position, or 0 if none.
 func (t *Table) findCellAt(row, col int) ID {
-	for id := range t.cells {
-		area, ok := t.g.Get(grid.ID(id))
-		if !ok {
-			continue
-		}
-		if area.Row() <= row && row < area.RowEnd() &&
-			area.Col() <= col && col < area.ColEnd() {
+	for id, cell := range t.cells {
+		if cell.r <= row && row < cell.r+cell.rSpan &&
+			cell.c <= col && col < cell.c+cell.cSpan {
 			return id
 		}
 	}
