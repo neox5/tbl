@@ -49,10 +49,77 @@ func NewWithCols(cols int) *Table {
 	return t
 }
 
-// AddRow advances to the next row for cell placement.
+// isRowComplete validates row has no holes and all columns filled.
+// Returns true if entire row range [0, Cols) is occupied.
+func (t *Table) isRowComplete(row int) bool {
+	if row < 0 || row >= t.g.Rows() {
+		return false
+	}
+	if t.g.Cols() == 0 {
+		return true
+	}
+	return t.g.AllRow(row)
+}
+
+// hasOnlyStaticCells checks if all cells in row are Static type.
+// Returns true only if row exists and contains exclusively Static cells.
+func (t *Table) hasOnlyStaticCells(row int) bool {
+	if row < 0 || row >= len(t.rows) {
+		return false
+	}
+	if len(t.rows[row]) == 0 {
+		return false
+	}
+	for _, id := range t.rows[row] {
+		cell := t.cells[id]
+		if cell == nil || cell.typ != Static {
+			return false
+		}
+	}
+	return true
+}
+
+// findFirstFreeCol locates first unoccupied column in row.
+// Returns column index of first free position, or Cols() if row full.
+// Accounts for cells with rowSpan > 1 from previous rows.
+func (t *Table) findFirstFreeCol(row int) int {
+	if row < 0 || row >= t.g.Rows() {
+		return 0
+	}
+	return t.g.NextFreeCol(row, 0)
+}
+
+// AddRow advances to next row with validation and cursor positioning.
+// Validates previous row completeness if not first row.
+// Sets colsFixed=true if row 0 complete and contains only Static cells.
+// Positions cursor at first free column in new row.
+// Panics if previous row incomplete or has holes.
 func (t *Table) AddRow() *Table {
+	prevRow := t.c.Row()
+
+	// Validate previous row if not first row
+	if prevRow >= 0 {
+		if !t.isRowComplete(prevRow) {
+			panic(fmt.Sprintf("tbl: incomplete row %d before AddRow", prevRow))
+		}
+
+		// Check if row 0 should fix columns
+		if prevRow == 0 && t.hasOnlyStaticCells(0) {
+			t.colsFixed = true
+		}
+	}
+
 	t.c.NextRow()
 	t.rows = append(t.rows, []ID{})
+
+	// Position cursor at first free column in new row
+	row := t.c.Row()
+	if row < t.g.Rows() {
+		freeCol := t.findFirstFreeCol(row)
+		// Update cursor column directly
+		t.c.Advance(freeCol)
+	}
+
 	return t
 }
 
@@ -105,7 +172,17 @@ func (t *Table) AddCell(ct CellType, rowSpan, colSpan int) *Table {
 		panic(fmt.Sprintf("tbl: insufficient columns for cell colSpan=%d at cursor (%d,%d) cols=%d", colSpan, row, col, t.g.Cols()))
 	}
 
-	// TODO: Check if space is free using t.g.IsFree
+	// Check if space is free using btmp.Grid
+	if !t.g.IsFree(row, col, rowSpan, colSpan) {
+		// Check if we can fit the cell somewhere in this row
+		if !t.g.CanFitWidth(row, col, colSpan) {
+			if !t.colsFixed {
+				fmt.Printf("DEBUG: cell cannot fit at (%d,%d) with colSpan=%d, cols=%d - expansion logic needed\n", row, col, colSpan, t.g.Cols())
+				panic(fmt.Sprintf("tbl: cell expansion not yet implemented at cursor (%d,%d)", row, col))
+			}
+		}
+		panic(fmt.Sprintf("tbl: space not free for cell at cursor (%d,%d) span=(%d,%d)", row, col, rowSpan, colSpan))
+	}
 
 	// Create cell
 	id := t.nextCellID

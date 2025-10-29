@@ -17,6 +17,7 @@ func (t *Table) printDebug() string {
 	b.WriteString(fmt.Sprintf("Cols: %d, Rows: %d\n", t.g.Cols(), t.g.Rows()))
 	b.WriteString(fmt.Sprintf("Cursor: (%d, %d)\n", t.c.Row(), t.c.Col()))
 	b.WriteString(fmt.Sprintf("Cells: %d\n", len(t.cells)))
+	b.WriteString(fmt.Sprintf("ColsFixed: %v\n", t.colsFixed))
 	b.WriteString("\n")
 
 	// Grid display
