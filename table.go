@@ -3,6 +3,7 @@ package tbl
 import (
 	"fmt"
 
+	"github.com/neox5/btmp"
 	"github.com/neox5/tbl/internal/cursor"
 	"github.com/neox5/tbl/internal/grid"
 )
@@ -12,15 +13,14 @@ type ID grid.ID
 
 // Table manages incremental table construction with flex/static cells.
 type Table struct {
-	g         *grid.Grid
-	cur       *cursor.Cursor
-	rows      [][]ID
-	cols      [][]ID
-	colWidths []int
-	cells     map[ID]*cell
+	g     *btmp.Grid
+	c     *cursor.Cursor
+	rows  [][]ID
+	cols  [][]ID
+	cells map[ID]*Cell
 
-	colsFixed bool
-	colLevels []int
+	colsFixed  bool
+	nextCellID ID
 }
 
 // New creates a new Table with zero columns.
@@ -35,13 +35,16 @@ func NewWithCols(cols int) *Table {
 	}
 
 	t := &Table{
-		g:         grid.New(0, cols),
-		cur:       cursor.New(),
-		rows:      make([][]ID, 0),
-		cols:      make([][]ID, cols),
-		colWidths: make([]int, cols),
-		cells:     make(map[ID]*cell),
-		colLevels: make([]int, cols),
+		g:          btmp.NewGridWithSize(0, cols),
+		c:          cursor.New(),
+		rows:       make([][]ID, 0),
+		cols:       make([][]ID, cols),
+		cells:      make(map[ID]*Cell),
+		nextCellID: 1,
+	}
+
+	if cols > 0 {
+		t.colsFixed = true
 	}
 
 	return t
@@ -49,11 +52,21 @@ func NewWithCols(cols int) *Table {
 
 // AddRow advances to the next row for cell placement.
 func (t *Table) AddRow() *Table {
-	t.addRow()
+	t.c.NextRow()
+
+	t.rows = append(t.rows, []ID{})
 	return t
 }
 
-// AddCell adds a cell at the current cursor position.
+// addCols grows grid columns to accommodate cell at cursor.
+func (t *Table) addCols(colSpan int) {
+	needed := t.c.Col() + colSpan
+	for needed > t.g.Cols() {
+		// TODO
+	}
+}
+
+// AddCell adds a cell at the.c.ent.c.or position.
 // rowSpan and colSpan define cell dimensions (must be > 0).
 // Returns *Table for chaining. Panics on invalid input.
 //
@@ -67,85 +80,46 @@ func (t *Table) AddRow() *Table {
 //   - Panics if cell cannot fit in available space
 func (t *Table) AddCell(ct CellType, rowSpan, colSpan int) *Table {
 	if rowSpan <= 0 || colSpan <= 0 {
-		panic(fmt.Sprintf("tbl: invalid span rowSpan=%d colSpan=%d at cursor (%d,%d)", rowSpan, colSpan, t.cur.Row(), t.cur.Col()))
+		panic(fmt.Sprintf("tbl: invalid span rowSpan=%d colSpan=%d at.c.or (%d,%d)", rowSpan, colSpan, t.c.Row(), t.c.Col()))
 	}
 
-	if t.cur.Row() == -1 {
-		panic(fmt.Sprintf("tbl: no row to add cell at cursor (%d,%d)", t.cur.Row(), t.cur.Col()))
+	if t.c.Row() == -1 {
+		panic(fmt.Sprintf("tbl: no row to add cell at.c.or (%d,%d)", t.c.Row(), t.c.Col()))
 	}
 
 	// Step 1: Ensure columns exist
 	if len(t.cols) == 0 {
-		t.addCols(colSpan)
-	} else {
-		// Step 2: Ensure column space available
-		t.ensureColumnSpace(colSpan)
-
-		// Step 3: Validate span fits
-		t.validateSpanFit(colSpan)
+		t.g.EnsureCols(colSpan)
+		t.g.EnsureRows(rowSpan)
+		t.addCell(ct, rowSpan, colSpan)
+		return t
 	}
-
-	t.addCell(ct, rowSpan, colSpan)
 
 	return t
 }
 
-// ensureColumnSpace verifies column availability and expands if needed.
-// Panics if expansion not possible and no free columns exist.
-func (t *Table) ensureColumnSpace(colSpan int) {
-	_, _, ok := t.nextZeroRun(t.cur.Col())
-	if !ok {
-		// No free columns found
-		if t.colsFixed {
-			panic("tbl: no free columns and column expansion disabled")
+// addCell places cell in grid, creates metadata, and advances cursor.
+func (t *Table) addCell(typ CellType, rowSpan, colSpan int) {
+	row, col := t.c.Pos()
+	id := t.nextCellID
+	c := NewCell(typ, row, col, rowSpan, colSpan)
+	t.g.SetRect(row, col, rowSpan, colSpan)
+
+	for i := row; i < row+rowSpan; i++ {
+		for j := col; j < col+colSpan; j++ {
 		}
-		t.addCols(colSpan)
-	}
-}
-
-// validateSpanFit checks if colSpan fits in next available free column run.
-// Panics if insufficient contiguous space exists.
-func (t *Table) validateSpanFit(colSpan int) {
-	pos, span, ok := t.nextZeroRun(t.cur.Col())
-	if !ok {
-		panic("tbl: no free column run found")
 	}
 
-	if colSpan > span {
-		panic(fmt.Sprintf("tbl: cell span %d exceeds available space %d at column %d",
-			colSpan, span, pos))
-	}
+	t.cells[id] = c
+
+	// Advance cursor
+	t.c.Advance(colSpan)
 }
 
 // PrintDebug renders table structure in TBL Grid Notation format.
-// Shows grid layout with cell types and current cursor position.
+// Shows grid layout with cell types and.c.ent.c.or position.
 // Returns empty string if table has no rows.
 // For debug/development purposes.
 func (t *Table) PrintDebug() string {
 	return t.printDebug()
-}
-
-// nextZeroRun returns (pos, count, ok) for the next run of 0s in colLevels.
-func (t *Table) nextZeroRun(from int) (pos, count int, ok bool) {
-	if from < 0 {
-		from = 0
-	}
-	n := len(t.colLevels)
-	if n == 0 || from >= n {
-		return -1, 0, false
-	}
-
-	i := from
-	for i < n && t.colLevels[i] != 0 {
-		i++
-	}
-	if i >= n {
-		return -1, 0, false
-	}
-
-	j := i
-	for j < n && t.colLevels[j] == 0 {
-		j++
-	}
-	return i, j - i, true
 }

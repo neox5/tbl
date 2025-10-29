@@ -17,7 +17,7 @@ func (t *Table) printDebug() string {
 	// Header with internal state
 	b.WriteString("=== Table Debug ===\n")
 	b.WriteString(fmt.Sprintf("Cols: %d, Rows: %d\n", t.g.Cols(), t.g.Rows()))
-	b.WriteString(fmt.Sprintf("Cursor: (%d, %d)\n", t.cur.Row(), t.cur.Col()))
+	b.WriteString(fmt.Sprintf("Cursor: (%d, %d)\n", t.c.Row(), t.c.Col()))
 	b.WriteString(fmt.Sprintf("Cells: %d\n", len(t.cells)))
 	b.WriteString("\n")
 
@@ -87,7 +87,7 @@ func (t *Table) renderRow(row int) string {
 	}
 
 	// Cursor indicator: show / if row matches cursor and row is incomplete
-	if row == t.cur.Row() && t.cur.Col() > 0 && t.cur.Col() < cols {
+	if row == t.c.Row() && t.c.Col() > 0 && t.c.Col() < cols {
 		b.WriteString("/")
 	} else {
 		b.WriteString("]")

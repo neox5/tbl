@@ -19,6 +19,11 @@ func (c *Cursor) Col() int {
 	return c.col
 }
 
+// Pos returns current row and column.
+func (c *Cursor) Pos() (row, col int) {
+	return c.row, c.col
+}
+
 // Advance moves cursor forward by colSpan columns.
 func (c *Cursor) Advance(colSpan int) {
 	if colSpan <= 0 {
@@ -31,9 +36,4 @@ func (c *Cursor) Advance(colSpan int) {
 func (c *Cursor) NextRow() {
 	c.row++
 	c.col = 0
-}
-
-// Pos returns current row and column.
-func (c *Cursor) Pos() (row, col int) {
-	return c.row, c.col
 }
