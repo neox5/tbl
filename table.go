@@ -103,8 +103,8 @@ func (t *Table) AddRow() *Table {
 			panic(fmt.Sprintf("tbl: incomplete row %d before AddRow", prevRow))
 		}
 
-		// Check if row 0 should fix columns
-		if prevRow == 0 && t.hasOnlyStaticCells(0) {
+		// Check if we can fix columns
+		if !t.colsFixed && t.hasOnlyStaticCells(prevRow) {
 			t.colsFixed = true
 		}
 	}
@@ -145,42 +145,31 @@ func (t *Table) AddCell(ct CellType, rowSpan, colSpan int) *Table {
 
 	row, col := t.c.Pos()
 
-	// Expand columns if needed and not fixed
-	if !t.colsFixed {
-		needed := col + colSpan
-		if needed > t.g.Cols() {
-			delta := needed - t.g.Cols()
-			t.g.GrowCols(delta)
-			for range delta {
-				t.cols = append(t.cols, []ID{})
-			}
+	// Check dimensional feasibility
+	fitRow, fitCol := t.g.CanFit(row, col, rowSpan, colSpan)
+
+	// Handle column constraint
+	if !fitCol {
+		if t.colsFixed {
+			panic(fmt.Sprintf("tbl: insufficient columns for cell colSpan=%d at cursor (%d,%d) cols=%d", colSpan, row, col, t.g.Cols()))
+		}
+		// Expand columns if not fixed
+		t.g.EnsureCols(col + colSpan)
+		for i := len(t.cols); i < col+colSpan; i++ {
+			t.cols = append(t.cols, []ID{})
 		}
 	}
 
 	// Expand rows if needed
-	needed := row + rowSpan
-	if needed > t.g.Rows() {
-		delta := needed - t.g.Rows()
-		t.g.GrowRows(delta)
-		for range delta {
+	if !fitRow {
+		t.g.EnsureRows(row + rowSpan)
+		for i := len(t.rows); i < row+rowSpan; i++ {
 			t.rows = append(t.rows, []ID{})
 		}
 	}
 
-	// Validate space available
-	if col+colSpan > t.g.Cols() {
-		panic(fmt.Sprintf("tbl: insufficient columns for cell colSpan=%d at cursor (%d,%d) cols=%d", colSpan, row, col, t.g.Cols()))
-	}
-
-	// Check if space is free using btmp.Grid
+	// Validate space available - now guaranteed to be in bounds
 	if !t.g.IsFree(row, col, rowSpan, colSpan) {
-		// Check if we can fit the cell somewhere in this row
-		if !t.g.CanFitWidth(row, col, colSpan) {
-			if !t.colsFixed {
-				fmt.Printf("DEBUG: cell cannot fit at (%d,%d) with colSpan=%d, cols=%d - expansion logic needed\n", row, col, colSpan, t.g.Cols())
-				panic(fmt.Sprintf("tbl: cell expansion not yet implemented at cursor (%d,%d)", row, col))
-			}
-		}
 		panic(fmt.Sprintf("tbl: space not free for cell at cursor (%d,%d) span=(%d,%d)", row, col, rowSpan, colSpan))
 	}
 
