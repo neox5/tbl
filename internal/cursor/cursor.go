@@ -32,8 +32,9 @@ func (c *Cursor) Advance(colSpan int) {
 	c.col += colSpan
 }
 
-// NextRow moves cursor to next row, resets column to 0.
-func (c *Cursor) NextRow() {
+// NextRow moves cursor to next row, resets column to 0, returns new row.
+func (c *Cursor) NextRow() int {
 	c.row++
 	c.col = 0
+	return c.row
 }

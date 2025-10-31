@@ -36,6 +36,7 @@ func (t *Table) printDebug() string {
 }
 
 // renderRow builds single row output in TBL Grid Notation format.
+// Uses position map and colSpan for direct cell traversal.
 // Format: {row}: [{cells}] or {row}: [{cells}/ for cursor position.
 func (t *Table) renderRow(row int) string {
 	var b strings.Builder
@@ -43,29 +44,42 @@ func (t *Table) renderRow(row int) string {
 	b.WriteString(fmt.Sprintf("%d: [", row))
 
 	cols := t.g.Cols()
-	processed := make(map[int]bool) // track processed columns
+	if cols == 0 {
+		b.WriteString("]")
+		return b.String()
+	}
 
-	for col := range cols {
-		if processed[col] {
-			continue
+	// Track current column position for rendering
+	col := 0
+
+	for col < cols {
+		// Get cell ID at current position
+		rowMap := t.pos[row]
+		id := ID(0)
+		if rowMap != nil {
+			id = rowMap[col]
 		}
 
-		// Find cell at this position
-		cellID := t.findCellAt(row, col)
-		if cellID == ID(0) {
-			// Empty cell (shouldn't happen with current design)
+		if id == 0 {
+			// Empty cell (shouldn't happen with valid grid)
 			b.WriteString("?")
-			processed[col] = true
 			if col < cols-1 {
 				b.WriteString("|")
 			}
+			col++
 			continue
 		}
 
-		cell := t.cells[cellID]
+		cell := t.cells[id]
+
+		// Skip if cell doesn't start in this row (spanning from above)
+		if cell.r != row {
+			col++
+			continue
+		}
 
 		// Get cell letter
-		letter := t.getCellLetter(cellID, cell.typ)
+		letter := t.getCellLetter(cell.id, cell.typ)
 
 		// Render span
 		for i := range cell.cSpan {
@@ -73,15 +87,14 @@ func (t *Table) renderRow(row int) string {
 				b.WriteString(" ") // space instead of | for span
 			}
 			b.WriteString(letter)
-			processed[col+i] = true
 		}
 
-		// Add separator if not last column
-		if col+cell.cSpan < cols {
+		col += cell.cSpan
+
+		// Add separator if not at end
+		if col < cols {
 			b.WriteString("|")
 		}
-
-		col += cell.cSpan - 1 // advance by span (loop will +1)
 	}
 
 	// Cursor indicator: show / if row matches cursor and row is incomplete
@@ -92,17 +105,6 @@ func (t *Table) renderRow(row int) string {
 	}
 
 	return b.String()
-}
-
-// findCellAt returns cell ID at grid position, or 0 if none.
-func (t *Table) findCellAt(row, col int) ID {
-	for id, cell := range t.cells {
-		if cell.r <= row && row < cell.r+cell.rSpan &&
-			cell.c <= col && col < cell.c+cell.cSpan {
-			return id
-		}
-	}
-	return ID(0)
 }
 
 // getCellLetter returns display letter for cell.
