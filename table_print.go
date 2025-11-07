@@ -36,7 +36,6 @@ func (t *Table) printDebug() string {
 }
 
 // renderRow builds single row output in TBL Grid Notation format.
-// Uses position map and colSpan for direct cell traversal.
 // Format: {row}: [{cells}] or {row}: [{cells}/ for cursor position.
 func (t *Table) renderRow(row int) string {
 	var b strings.Builder
@@ -53,14 +52,9 @@ func (t *Table) renderRow(row int) string {
 	col := 0
 
 	for col < cols {
-		// Get cell ID at current position
-		rowMap := t.pos[row]
-		id := ID(0)
-		if rowMap != nil {
-			id = rowMap[col]
-		}
+		cell := t.getCellAt(row, col)
 
-		if id == 0 {
+		if cell == nil {
 			// Empty cell (shouldn't happen with valid grid)
 			b.WriteString("?")
 			if col < cols-1 {
@@ -69,8 +63,6 @@ func (t *Table) renderRow(row int) string {
 			col++
 			continue
 		}
-
-		cell := t.cells[id]
 
 		// Skip if cell doesn't start in this row (spanning from above)
 		if cell.r != row {

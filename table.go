@@ -24,7 +24,6 @@ type Table struct {
 	g     *btmp.Grid
 	c     *cursor.Cursor
 	cells map[ID]*Cell
-	pos   map[int]map[int]ID // pos[row][col] = cell ID
 
 	colsFixed  bool
 	nextCellID ID
@@ -45,7 +44,6 @@ func NewWithCols(cols int) *Table {
 		g:          btmp.NewGridWithSize(0, cols),
 		c:          cursor.New(),
 		cells:      make(map[ID]*Cell),
-		pos:        make(map[int]map[int]ID),
 		nextCellID: 1,
 	}
 
@@ -132,8 +130,8 @@ func (t *Table) AddCell(ct CellType, rowSpan, colSpan int) *Table {
 
 		// Process rows top to bottom (0 → row)
 		for r := 0; r <= row; r++ {
-			if rowFlexMap, exists := flexCells[r]; exists && len(rowFlexMap) > 0 {
-				t.distributeAndExpand(r, rowFlexMap, needed)
+			if rowFlexCells, exists := flexCells[r]; exists && len(rowFlexCells) > 0 {
+				t.distributeAndExpand(r, rowFlexCells, needed)
 			}
 		}
 	}
@@ -149,13 +147,6 @@ func (t *Table) AddCell(ct CellType, rowSpan, colSpan int) *Table {
 	// Set in grid
 	t.g.SetRect(row, col, rowSpan, colSpan)
 
-	// Populate position map for all occupied cells
-	for r := row; r < row+rowSpan; r++ {
-		for c := col; c < col+colSpan; c++ {
-			t.pos[r][c] = id
-		}
-	}
-
 	// Advance cursor
 	t.c.Advance(colSpan)
 
@@ -170,79 +161,39 @@ func (t *Table) PrintDebug() string {
 	return t.printDebug()
 }
 
-// moveCellBy moves cell at (row, col) right by delta columns.
-// Checks each row, cascades next cell if needed, then moves.
-// Internal method - no validation.
-func (t *Table) moveCellBy(row, col, delta int) {
-	cell := t.getCell(row, col)
-
-	// Check each row spanned by cell
-	for r := cell.r; r < cell.r+cell.rSpan; r++ {
-		if !t.canMoveBy(cell, delta) {
-			// Cascade to next cell
-			t.moveCellBy(r, cell.c+cell.cSpan, delta)
+// getCellAt finds the cell containing position (row, col).
+// Returns nil if position is empty.
+func (t *Table) getCellAt(row, col int) *Cell {
+	for _, cell := range t.cells {
+		if cell.Contains(row, col) {
+			return cell
 		}
 	}
-
-	// Move cell
-	t.clearCell(cell)
-	cell.MoveBy(delta)
-	t.addCell(cell)
+	return nil
 }
 
-// canMoveBy checks if cell can move by delta columns.
-// Calculates non-overlapping rectangle: destination minus origin.
-func (t *Table) canMoveBy(cell *Cell, delta int) bool {
-	if delta <= 0 {
-		return true // only handle rightward
-	}
-
-	// Non-overlapping rectangle when moving right
-	startCol := cell.c + cell.cSpan
-	endCol := cell.c + delta + cell.cSpan
-
-	// Check if non-overlapping region is free
-	return t.g.IsFree(cell.r, startCol, cell.rSpan, endCol-startCol)
-}
-
-// addCell adds cell to pos map and grid.
-func (t *Table) addCell(cell *Cell) {
-	for r := cell.r; r < cell.r+cell.rSpan; r++ {
-		for c := cell.c; c < cell.c+cell.cSpan; c++ {
-			t.pos[r][c] = cell.id
+// getCellsInRow returns all cells that touch the specified row.
+func (t *Table) getCellsInRow(row int) []*Cell {
+	var result []*Cell
+	for _, cell := range t.cells {
+		if cell.TouchesRow(row) {
+			result = append(result, cell)
 		}
 	}
-	t.g.SetRect(cell.r, cell.c, cell.rSpan, cell.cSpan)
+	return result
 }
 
-// clearCell removes cell from pos map and grid.
-func (t *Table) clearCell(cell *Cell) {
-	for r := cell.r; r < cell.r+cell.rSpan; r++ {
-		for c := cell.c; c < cell.c+cell.cSpan; c++ {
-			delete(t.pos[r], c)
-		}
-	}
-	t.g.ClearRect(cell.r, cell.c, cell.rSpan, cell.cSpan)
+// isFlex reports whether the cell at (row, col) is a Flex type.
+func (t *Table) isFlex(row, col int) bool {
+	cell := t.getCellAt(row, col)
+	return cell != nil && cell.typ == Flex
 }
 
-// expandCell expands a flex cell and updates all table state.
-// Uses clearCell/addCell to maintain consistency with existing patterns.
-func (t *Table) expandCell(cell *Cell, cols int) {
-	if cols <= 0 {
-		return
-	}
-	if cell.typ != Flex {
-		panic(fmt.Sprintf("cannot expand Static cell id=%d", cell.id))
-	}
-
-	// Remove cell from table state
-	t.clearCell(cell)
-
-	// Update cell span
-	cell.cSpan += cols
-
-	// Re-add cell with new span
-	t.addCell(cell)
+// isWall reports whether the cell at (row, col) acts as a wall.
+// A cell is a wall if it spans multiple rows and originates above row.
+func (t *Table) isWall(row, col int) bool {
+	cell := t.getCellAt(row, col)
+	return cell != nil && cell.rSpan > 1 && cell.r < row
 }
 
 // isRowComplete validates row has no holes and all columns filled.
@@ -265,8 +216,8 @@ func (t *Table) isRowStatic(row int) bool {
 	}
 
 	for col := 0; col < t.g.Cols(); {
-		cell := t.getCell(row, col)
-		if cell.typ != Static {
+		cell := t.getCellAt(row, col)
+		if cell == nil || cell.typ != Static {
 			return false
 		}
 		col += cell.cSpan
@@ -274,23 +225,14 @@ func (t *Table) isRowStatic(row int) bool {
 	return true
 }
 
-// ensureRows grows grid and initializes position maps up to targetRow (inclusive).
-// Centralizes all position map initialization logic.
+// ensureRows grows grid up to targetRow (inclusive).
 func (t *Table) ensureRows(targetRow int) {
 	if targetRow < t.g.Rows() {
 		return
 	}
 
-	currentRows := t.g.Rows()
-	delta := targetRow - currentRows + 1
+	delta := targetRow - t.g.Rows() + 1
 	t.g.GrowRows(delta)
-
-	// Initialize position maps for all new rows
-	for r := currentRows; r < t.g.Rows(); r++ {
-		if t.pos[r] == nil {
-			t.pos[r] = make(map[int]ID)
-		}
-	}
 }
 
 // ensureCols ensures sufficient columns for span at position.
@@ -310,40 +252,6 @@ func (t *Table) ensureCols(col, colSpan int) error {
 	delta := needed - t.g.Cols()
 	t.g.GrowCols(delta)
 	return nil
-}
-
-// getCell returns cell at position using position map lookup.
-// Panics if position is empty - indicates invalid grid state.
-func (t *Table) getCell(row, col int) *Cell {
-	rowMap := t.pos[row]
-	if rowMap == nil {
-		panic(fmt.Sprintf("tbl: no row map at row %d", row))
-	}
-
-	id := rowMap[col]
-	if id == 0 {
-		panic(fmt.Sprintf("tbl: no cell at position (%d,%d)", row, col))
-	}
-
-	cell := t.cells[id]
-	if cell == nil {
-		panic(fmt.Sprintf("tbl: cell id=%d not found in cells map", id))
-	}
-
-	return cell
-}
-
-// isFlex reports whether the cell at (row, col) is a Flex type.
-func (t *Table) isFlex(row, col int) bool {
-	cell := t.getCell(row, col)
-	return cell.typ == Flex
-}
-
-// isWall reports whether the cell at (row, col) acts as a wall.
-// A cell is a wall if it spans multiple rows and originates above row.
-func (t *Table) isWall(row, col int) bool {
-	cell := t.getCell(row, col)
-	return cell.rSpan > 1 && cell.r < row
 }
 
 // findFirstFreeCol locates first unoccupied column in row.
@@ -374,38 +282,36 @@ func (t *Table) calculateNeeded(row, col, colSpan int) int {
 	return required - firstBlocked
 }
 
-// flexEntry represents a flex cell found during traversal.
-type flexEntry struct {
-	col       int
-	id        ID
+// flexCell represents a flex cell found during traversal.
+type flexCell struct {
+	cell      *Cell
 	addedSpan int
 }
 
 // traverseFlex scans row for flex cells in both directions from col position.
 // Recursively processes flex cells found in row above (row-1).
-// Returns success status and flex cells organized by row and column.
+// Returns success status and flex cells organized by row.
 //
-// Return structure: map[int]map[int]flexEntry where outer key = row, inner key = col
-func (t *Table) traverseFlex(row, col int) (bool, map[int]map[int]flexEntry) {
+// Return structure: map[int][]flexCell where key = row
+func (t *Table) traverseFlex(row, col int) (bool, map[int][]flexCell) {
 	if row < 0 {
 		return true, nil
 	}
 
-	result := make(map[int]map[int]flexEntry)
+	result := make(map[int][]flexCell)
+	seen := make(map[ID]bool)
 
 	// Scan left
-	okLeft, leftResult := t.traverseFlexDir(row, col, DirLeft)
+	okLeft := t.traverseFlexDir(row, col, DirLeft, result, seen)
 	if !okLeft {
 		return false, nil
 	}
-	mergeFlexResults(result, leftResult)
 
 	// Scan right (includes origin col)
-	okRight, rightResult := t.traverseFlexDir(row, col, DirRight)
+	okRight := t.traverseFlexDir(row, col, DirRight, result, seen)
 	if !okRight {
 		return false, nil
 	}
-	mergeFlexResults(result, rightResult)
 
 	return true, result
 }
@@ -413,9 +319,7 @@ func (t *Table) traverseFlex(row, col int) (bool, map[int]map[int]flexEntry) {
 // traverseFlexDir scans single direction from col position in row.
 // Stops at walls or grid boundaries.
 // For each flex cell found, recursively calls traverseFlex(row-1, flexCol).
-func (t *Table) traverseFlexDir(row, col int, dir Direction) (bool, map[int]map[int]flexEntry) {
-	result := make(map[int]map[int]flexEntry)
-
+func (t *Table) traverseFlexDir(row, col int, dir Direction, result map[int][]flexCell, seen map[ID]bool) bool {
 	// Determine iteration bounds
 	start, end, step := col, t.g.Cols(), 1
 	if dir == DirLeft {
@@ -431,97 +335,172 @@ func (t *Table) traverseFlexDir(row, col int, dir Direction) (bool, map[int]map[
 
 		// Check if flex cell
 		if t.isFlex(row, c) {
-			cell := t.getCell(row, c)
+			cell := t.getCellAt(row, c)
 
-			// Add to current row result (map auto-deduplicates)
-			if result[row] == nil {
-				result[row] = make(map[int]flexEntry)
+			// Skip if already seen
+			if seen[cell.id] {
+				continue
 			}
-			result[row][c] = flexEntry{
-				col:       c,
-				id:        cell.id,
+			seen[cell.id] = true
+
+			// Add to current row result
+			result[row] = append(result[row], flexCell{
+				cell:      cell,
 				addedSpan: cell.AddedSpan(),
-			}
+			})
 
 			// Recurse to row above
 			ok, aboveResult := t.traverseFlex(row-1, c)
 			if !ok {
-				return false, nil
+				return false
 			}
-			mergeFlexResults(result, aboveResult)
+
+			// Merge results
+			for r, flexCells := range aboveResult {
+				for _, fc := range flexCells {
+					if !seen[fc.cell.id] {
+						seen[fc.cell.id] = true
+						result[r] = append(result[r], fc)
+					}
+				}
+			}
 		}
 	}
 
-	return true, result
-}
-
-// mergeFlexResults combines source into dest (both map[int]map[int]flexEntry).
-// Map structure naturally handles duplicates by overwriting.
-func mergeFlexResults(dest, src map[int]map[int]flexEntry) {
-	for row, colMap := range src {
-		if dest[row] == nil {
-			dest[row] = make(map[int]flexEntry)
-		}
-		for col, entry := range colMap {
-			dest[row][col] = entry
-		}
-	}
+	return true
 }
 
 // distributeAndExpand handles movement and expansion for one row.
 // Distributes needed cols fairly: base amount to all, remainder to cells with least expansion.
 // Tie-breaking: leftmost cells get priority.
-func (t *Table) distributeAndExpand(row int, flexMap map[int]flexEntry, needed int) {
-	if len(flexMap) == 0 || needed <= 0 {
+func (t *Table) distributeAndExpand(row int, flexCells []flexCell, needed int) {
+	if len(flexCells) == 0 || needed <= 0 {
 		return
 	}
 
-	// Build sorted slice from map
-	entries := make([]flexEntry, 0, len(flexMap))
-	for _, entry := range flexMap {
-		entries = append(entries, entry)
-	}
-
 	// Sort by: 1) addedSpan ascending, 2) col ascending (left to right)
-	sort.Slice(entries, func(i, j int) bool {
-		if entries[i].addedSpan != entries[j].addedSpan {
-			return entries[i].addedSpan < entries[j].addedSpan
+	sort.Slice(flexCells, func(i, j int) bool {
+		if flexCells[i].addedSpan != flexCells[j].addedSpan {
+			return flexCells[i].addedSpan < flexCells[j].addedSpan
 		}
-		return entries[i].col < entries[j].col
+		return flexCells[i].cell.c < flexCells[j].cell.c
 	})
 
-	n := len(entries)
+	n := len(flexCells)
 
 	// Calculate base distribution
 	base := needed / n
 	remainder := needed % n
 
-	// Process each flex cell in sorted order
-	for i, entry := range entries {
-		flexCell := t.cells[entry.id]
+	// Plan all movements and expansions
+	type action struct {
+		cell   *Cell
+		expand int
+		moveBy int
+	}
+	var actions []action
 
-		// Everyone gets base amount
+	// Calculate expansions
+	for i, fc := range flexCells {
 		expandAmount := base
-
-		// First 'remainder' cells get +1 (prioritizes least expanded)
 		if i < remainder {
 			expandAmount++
 		}
+		if expandAmount > 0 {
+			actions = append(actions, action{
+				cell:   fc.cell,
+				expand: expandAmount,
+			})
+		}
+	}
 
-		if expandAmount == 0 {
+	// Execute movements and expansions
+	t.executeExpansions(row, actions)
+}
+
+// executeExpansions applies expansions with necessary shifts.
+func (t *Table) executeExpansions(row int, actions []action) {
+	// Sort actions by column position for processing
+	sort.Slice(actions, func(i, j int) bool {
+		return actions[i].cell.c < actions[j].cell.c
+	})
+
+	// Process each expansion
+	for _, a := range actions {
+		if a.expand == 0 {
 			continue
 		}
 
 		// Check if there's an adjacent cell to move
-		adjacentCol := entry.col + flexCell.cSpan
-		adjacentOccupied := !t.g.IsFree(row, adjacentCol, 1, expandAmount)
+		adjacentCol := a.cell.c + a.cell.cSpan
 
-		if adjacentOccupied {
-			// Move adjacent cell right to make space
-			t.moveCellBy(row, adjacentCol, expandAmount)
-		}
+		// Find all cells that need to shift right
+		shiftCells := t.findCellsToShift(row, adjacentCol, a.expand)
 
-		// Expand flex cell (updates grid + position map)
-		t.expandCell(flexCell, expandAmount)
+		// Execute shifts from right to left
+		t.shiftCellsRight(shiftCells, a.expand)
+
+		// Expand the flex cell
+		t.expandCell(a.cell, a.expand)
 	}
+}
+
+// findCellsToShift identifies cells that need to move for expansion.
+func (t *Table) findCellsToShift(row, fromCol, delta int) []*Cell {
+	var cells []*Cell
+	seen := make(map[ID]bool)
+
+	// Find all cells in row starting at fromCol
+	for col := fromCol; col < t.g.Cols(); col++ {
+		cell := t.getCellAt(row, col)
+		if cell != nil && !seen[cell.id] {
+			seen[cell.id] = true
+			cells = append(cells, cell)
+			col = cell.c + cell.cSpan - 1 // Skip to end of cell
+		}
+	}
+
+	return cells
+}
+
+// shiftCellsRight moves cells right by delta columns.
+func (t *Table) shiftCellsRight(cells []*Cell, delta int) {
+	if delta <= 0 || len(cells) == 0 {
+		return
+	}
+
+	// Sort by column descending for right-to-left processing
+	sort.Slice(cells, func(i, j int) bool {
+		return cells[i].c > cells[j].c
+	})
+
+	// Clear all cells from grid
+	for _, cell := range cells {
+		t.g.ClearRect(cell.r, cell.c, cell.rSpan, cell.cSpan)
+	}
+
+	// Move cells and re-set in grid
+	for _, cell := range cells {
+		cell.c += delta
+		t.g.SetRect(cell.r, cell.c, cell.rSpan, cell.cSpan)
+	}
+}
+
+// expandCell expands a flex cell and updates grid state.
+func (t *Table) expandCell(cell *Cell, cols int) {
+	if cols <= 0 {
+		return
+	}
+	if cell.typ != Flex {
+		panic(fmt.Sprintf("cannot expand Static cell id=%d", cell.id))
+	}
+
+	// Clear old position
+	t.g.ClearRect(cell.r, cell.c, cell.rSpan, cell.cSpan)
+
+	// Update cell span
+	cell.cSpan += cols
+
+	// Set new position
+	t.g.SetRect(cell.r, cell.c, cell.rSpan, cell.cSpan)
 }

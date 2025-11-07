@@ -33,10 +33,15 @@ func NewCell(id ID, typ CellType, r, c, rSpan, cSpan int) *Cell {
 	}
 }
 
-// MoveBy shifts cell right by delta columns.
-// Mutates cell position in place.
-func (c *Cell) MoveBy(delta int) {
-	c.c += delta
+// Contains checks if cell contains the position (row, col).
+func (c *Cell) Contains(row, col int) bool {
+	return row >= c.r && row < c.r+c.rSpan &&
+		col >= c.c && col < c.c+c.cSpan
+}
+
+// TouchesRow checks if cell spans through the specified row.
+func (c *Cell) TouchesRow(row int) bool {
+	return row >= c.r && row < c.r+c.rSpan
 }
 
 // AddedSpan returns total expansion applied to this cell.
