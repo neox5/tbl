@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/neox5/btmp"
-	"github.com/neox5/tbl/internal/cursor"
 )
 
 // ID identifies a cell in the table.
@@ -13,8 +12,11 @@ type ID int64
 // Table manages incremental table construction with flex/static cells.
 type Table struct {
 	g     *btmp.Grid
-	c     *cursor.Cursor
 	cells map[ID]*Cell
+
+	// Cursor state
+	row int // current row position, -1 before first AddRow
+	col int // current column position within row
 
 	colsFixed  bool
 	nextCellID ID
@@ -33,8 +35,9 @@ func NewWithCols(cols int) *Table {
 
 	t := &Table{
 		g:          btmp.NewGridWithSize(0, cols),
-		c:          cursor.New(),
 		cells:      make(map[ID]*Cell),
+		row:        -1, // no active row yet
+		col:        0,
 		nextCellID: 1,
 	}
 
@@ -47,29 +50,23 @@ func NewWithCols(cols int) *Table {
 
 // AddRow advances to next row with validation and cursor positioning.
 func (t *Table) AddRow() *Table {
-	row := t.c.Row()
-
 	// Validate previous row if not first row
-	if row >= 0 {
-		if !t.isRowComplete(row) {
-			panic(fmt.Sprintf("tbl: incomplete row %d before AddRow", row))
+	if t.row >= 0 {
+		if !t.isRowComplete(t.row) {
+			panic(fmt.Sprintf("tbl: incomplete row %d before AddRow", t.row))
 		}
 
 		// Check if we can fix columns
-		if !t.colsFixed && t.isRowStatic(row) {
+		if !t.colsFixed && t.isRowStatic(t.row) {
 			t.colsFixed = true
 		}
 	}
 
 	// Ensure next row exists
-	t.ensureRows(row + 1)
+	t.ensureRows(t.row + 2) // t.row = current row index; +1 current row count; +2 next row count
 
-	// Advance cursor and get new row
-	row = t.c.NextRow()
-
-	// Position cursor at first free column
-	freeCol := t.findFirstFreeCol(row)
-	t.c.Advance(freeCol)
+	// Advance to next row
+	t.nextRow()
 
 	return t
 }
@@ -80,14 +77,14 @@ func (t *Table) AddRow() *Table {
 // or space occupied.
 func (t *Table) AddCell(ct CellType, rowSpan, colSpan int) *Table {
 	if rowSpan <= 0 || colSpan <= 0 {
-		panic(fmt.Sprintf("tbl: invalid span rowSpan=%d colSpan=%d at cursor (%d,%d)", rowSpan, colSpan, t.c.Row(), t.c.Col()))
+		panic(fmt.Sprintf("tbl: invalid span rowSpan=%d colSpan=%d at cursor (%d,%d)", rowSpan, colSpan, t.row, t.col))
 	}
 
-	if t.c.Row() == -1 {
-		panic(fmt.Sprintf("tbl: no row to add cell at cursor (%d,%d)", t.c.Row(), t.c.Col()))
+	if t.row == -1 {
+		panic(fmt.Sprintf("tbl: no row to add cell at cursor (%d,%d)", t.row, t.col))
 	}
 
-	row, col := t.c.Pos()
+	row, col := t.row, t.col
 
 	// Ensure sufficient rows for cell span
 	t.ensureRows(row + rowSpan)
@@ -138,7 +135,7 @@ func (t *Table) AddCell(ct CellType, rowSpan, colSpan int) *Table {
 	t.g.SetRect(row, col, rowSpan, colSpan)
 
 	// Advance cursor
-	t.c.Advance(colSpan)
+	t.advance(colSpan)
 
 	return t
 }
