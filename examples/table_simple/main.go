@@ -40,7 +40,7 @@ func main() {
 	t.AddRow().
 		AddCell(tbl.Flex, 1, 1).
 		AddCell(tbl.Static, 1, 1).
-		AddCell(tbl.Static, 1, 1)
+		AddCell(tbl.Static, 1, 2)
 
 	fmt.Println("Success!")
 	fmt.Println(t.PrintDebug())

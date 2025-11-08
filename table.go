@@ -99,18 +99,17 @@ func (t *Table) AddCell(ct CellType, rowSpan, colSpan int) *Table {
 	row, col := t.c.Pos()
 
 	// Ensure sufficient rows for cell span
-	t.ensureRows(row + rowSpan - 1)
+	t.ensureRows(row + rowSpan)
 
-	// Step 1: Check if enough columns exist
-	needed := col + colSpan
-	if needed > t.g.Cols() {
-		if err := t.ensureCols(col, colSpan); err != nil {
+	// Simple check on first row
+	if row == 0 && col+colSpan > t.g.Cols() {
+		if err := t.ensureCols(col + colSpan); err != nil {
 			panic(err.Error())
 		}
 	}
 
-	// Step 2: Check if space is free
-	if !t.g.CanFitWidth(row, col, colSpan) {
+	// when cell does not fit in the current possition, we try to expand
+	if colSpan > t.g.CountZerosFromInRow(row, col) {
 		// Space occupied - wall blocking
 		if t.colsFixed {
 			panic(fmt.Sprintf("tbl: space occupied at cursor (%d,%d), cannot expand", row, col))
@@ -128,7 +127,7 @@ func (t *Table) AddCell(ct CellType, rowSpan, colSpan int) *Table {
 		// Add columns to grid
 		t.g.GrowCols(needed)
 
-		// Process rows top to bottom (0 → row)
+		// Process rows top to bottom
 		for r := 0; r <= row; r++ {
 			if rowFlexCells, exists := flexCells[r]; exists && len(rowFlexCells) > 0 {
 				t.distributeAndExpand(r, rowFlexCells, needed)
@@ -170,17 +169,6 @@ func (t *Table) getCellAt(row, col int) *Cell {
 		}
 	}
 	return nil
-}
-
-// getCellsInRow returns all cells that touch the specified row.
-func (t *Table) getCellsInRow(row int) []*Cell {
-	var result []*Cell
-	for _, cell := range t.cells {
-		if cell.TouchesRow(row) {
-			result = append(result, cell)
-		}
-	}
-	return result
 }
 
 // isFlex reports whether the cell at (row, col) is a Flex type.
@@ -225,31 +213,30 @@ func (t *Table) isRowStatic(row int) bool {
 	return true
 }
 
-// ensureRows grows grid up to targetRow (inclusive).
-func (t *Table) ensureRows(targetRow int) {
-	if targetRow < t.g.Rows() {
+// ensureRows grows grid up to rowCount (inclusive).
+func (t *Table) ensureRows(rowCount int) {
+	if rowCount <= t.g.Rows() {
 		return
 	}
 
-	delta := targetRow - t.g.Rows() + 1
+	delta := rowCount - t.g.Rows()
 	t.g.GrowRows(delta)
 }
 
 // ensureCols ensures sufficient columns for span at position.
 // Returns error if colsFixed and insufficient columns.
 // Expands columns if not fixed.
-func (t *Table) ensureCols(col, colSpan int) error {
-	needed := col + colSpan
-	if needed <= t.g.Cols() {
+func (t *Table) ensureCols(colCount int) error {
+	if colCount <= t.g.Cols() {
 		return nil
 	}
 
 	if t.colsFixed {
-		return fmt.Errorf("tbl: insufficient columns for cell colSpan=%d at col=%d, cols=%d", colSpan, col, t.g.Cols())
+		return fmt.Errorf("tbl: cannot ensure cols %d on fixed table (%d)", colCount, t.g.Cols())
 	}
 
 	// Expand columns to fit
-	delta := needed - t.g.Cols()
+	delta := colCount - t.g.Cols()
 	t.g.GrowCols(delta)
 	return nil
 }
@@ -261,14 +248,14 @@ func (t *Table) findFirstFreeCol(row int) int {
 	if row < 0 || row >= t.g.Rows() {
 		return 0
 	}
-	return t.g.NextFreeCol(row, 0)
+	return t.g.NextZeroInRow(row, 0)
 }
 
 // calculateNeeded determines how many columns required to fit cell.
 // Returns columns needed beyond current grid width or first blocking position.
 func (t *Table) calculateNeeded(row, col, colSpan int) int {
 	// Find first blocking position in row
-	firstBlocked := t.g.NextOccupiedCol(row, col)
+	firstBlocked := t.g.NextOneInRow(row, col)
 	if firstBlocked == -1 {
 		firstBlocked = t.g.Cols()
 	}
@@ -370,9 +357,10 @@ func (t *Table) traverseFlexDir(row, col int, dir Direction, result map[int][]fl
 	return true
 }
 
-// distributeAndExpand handles movement and expansion for one row.
+// distributeAndExpand handles expansion for flex cells in one row.
 // Distributes needed cols fairly: base amount to all, remainder to cells with least expansion.
 // Tie-breaking: leftmost cells get priority.
+// Directly expands cells and shifts adjacent content.
 func (t *Table) distributeAndExpand(row int, flexCells []flexCell, needed int) {
 	if len(flexCells) == 0 || needed <= 0 {
 		return
@@ -392,61 +380,33 @@ func (t *Table) distributeAndExpand(row int, flexCells []flexCell, needed int) {
 	base := needed / n
 	remainder := needed % n
 
-	// Plan all movements and expansions
-	type action struct {
-		cell   *Cell
-		expand int
-		moveBy int
-	}
-	var actions []action
-
-	// Calculate expansions
+	// Process each flex cell in sorted order (left to right)
+	// This ensures we don't re-shift already expanded cells
 	for i, fc := range flexCells {
+		// Calculate expansion amount for this cell
 		expandAmount := base
 		if i < remainder {
 			expandAmount++
 		}
-		if expandAmount > 0 {
-			actions = append(actions, action{
-				cell:   fc.cell,
-				expand: expandAmount,
-			})
-		}
-	}
 
-	// Execute movements and expansions
-	t.executeExpansions(row, actions)
-}
-
-// executeExpansions applies expansions with necessary shifts.
-func (t *Table) executeExpansions(row int, actions []action) {
-	// Sort actions by column position for processing
-	sort.Slice(actions, func(i, j int) bool {
-		return actions[i].cell.c < actions[j].cell.c
-	})
-
-	// Process each expansion
-	for _, a := range actions {
-		if a.expand == 0 {
+		if expandAmount == 0 {
 			continue
 		}
 
-		// Check if there's an adjacent cell to move
-		adjacentCol := a.cell.c + a.cell.cSpan
-
-		// Find all cells that need to shift right
-		shiftCells := t.findCellsToShift(row, adjacentCol, a.expand)
+		// Find adjacent cells that need to shift right
+		adjacentCol := fc.cell.c + fc.cell.cSpan
+		shiftCells := t.findCellsToShift(row, adjacentCol)
 
 		// Execute shifts from right to left
-		t.shiftCellsRight(shiftCells, a.expand)
+		t.shiftCellsRight(shiftCells, expandAmount)
 
 		// Expand the flex cell
-		t.expandCell(a.cell, a.expand)
+		t.expandCell(fc.cell, expandAmount)
 	}
 }
 
 // findCellsToShift identifies cells that need to move for expansion.
-func (t *Table) findCellsToShift(row, fromCol, delta int) []*Cell {
+func (t *Table) findCellsToShift(row, fromCol int) []*Cell {
 	var cells []*Cell
 	seen := make(map[ID]bool)
 
