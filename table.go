@@ -285,28 +285,33 @@ func (t *Table) traverseFlex(row, col int) (bool, map[int][]flexCell) {
 		return true, nil
 	}
 
+	var canTraverse bool
 	result := make(map[int][]flexCell)
 	seen := make(map[ID]bool)
 
 	// Scan left
-	okLeft := t.traverseFlexDir(row, col, DirLeft, result, seen)
-	if !okLeft {
-		return false, nil
+	if t.traverseFlexDir(row, col, DirLeft, result, seen) {
+		canTraverse = true
 	}
 
 	// Scan right (includes origin col)
-	okRight := t.traverseFlexDir(row, col, DirRight, result, seen)
-	if !okRight {
-		return false, nil
+	if t.traverseFlexDir(row, col, DirRight, result, seen) {
+		canTraverse = true
 	}
 
-	return true, result
+	return canTraverse, result
 }
 
 // traverseFlexDir scans single direction from col position in row.
 // Stops at walls or grid boundaries.
 // For each flex cell found, recursively calls traverseFlex(row-1, flexCol).
 func (t *Table) traverseFlexDir(row, col int, dir Direction, result map[int][]flexCell, seen map[ID]bool) bool {
+	if row == 0 {
+		return true
+	}
+
+	var canTraverse bool
+
 	// Determine iteration bounds
 	start, end, step := col, t.g.Cols(), 1
 	if dir == DirLeft {
@@ -320,9 +325,9 @@ func (t *Table) traverseFlexDir(row, col int, dir Direction, result map[int][]fl
 			break
 		}
 
-		// Check if flex cell
-		if t.isFlex(row, c) {
-			cell := t.getCellAt(row, c)
+		// Check above if flex cell
+		if t.isFlex(row-1, c) {
+			cell := t.getCellAt(row-1, c)
 
 			// Skip if already seen
 			if seen[cell.id] {
@@ -331,15 +336,15 @@ func (t *Table) traverseFlexDir(row, col int, dir Direction, result map[int][]fl
 			seen[cell.id] = true
 
 			// Add to current row result
-			result[row] = append(result[row], flexCell{
+			result[row-1] = append(result[row-1], flexCell{
 				cell:      cell,
 				addedSpan: cell.AddedSpan(),
 			})
 
 			// Recurse to row above
 			ok, aboveResult := t.traverseFlex(row-1, c)
-			if !ok {
-				return false
+			if ok {
+				canTraverse = true
 			}
 
 			// Merge results
@@ -354,7 +359,7 @@ func (t *Table) traverseFlexDir(row, col int, dir Direction, result map[int][]fl
 		}
 	}
 
-	return true
+	return canTraverse
 }
 
 // distributeAndExpand handles expansion for flex cells in one row.
