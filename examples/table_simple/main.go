@@ -25,21 +25,11 @@ func main() {
 		}
 	}()
 
-	// Row 0: Static + Flex + Static
-	t.AddRow().
-		AddCell(tbl.Static, 1, 1).
-		AddCell(tbl.Flex, 1, 1).
-		AddCell(tbl.Static, 1, 1)
-
-	// Row 1: Static(span 2) + Flex
-	t.AddRow().
-		AddCell(tbl.Static, 1, 2).
-		AddCell(tbl.Flex, 1, 1)
-
-	// Row 2: Flex + Static + Static
 	t.AddRow().
 		AddCell(tbl.Flex, 1, 1).
-		AddCell(tbl.Static, 1, 1).
+		AddCell(tbl.Static, 2, 1)
+
+	t.AddRow().
 		AddCell(tbl.Static, 1, 2)
 
 	fmt.Println("Success!")

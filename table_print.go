@@ -37,6 +37,7 @@ func (t *Table) printDebug() string {
 
 // renderRow builds single row output in TBL Grid Notation format.
 // Format: {row}: [{cells}] or {row}: [{cells}/ for cursor position.
+// Cells spanning from above rows are rendered with their letter repeated.
 func (t *Table) renderRow(row int) string {
 	var b strings.Builder
 
@@ -64,16 +65,10 @@ func (t *Table) renderRow(row int) string {
 			continue
 		}
 
-		// Skip if cell doesn't start in this row (spanning from above)
-		if cell.r != row {
-			col++
-			continue
-		}
-
 		// Get cell letter
 		letter := t.getCellLetter(cell.id, cell.typ)
 
-		// Render span
+		// Render cell with its colSpan (whether starting here or spanning from above)
 		for i := range cell.cSpan {
 			if i > 0 {
 				b.WriteString(" ") // space instead of | for span
