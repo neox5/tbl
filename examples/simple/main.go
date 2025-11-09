@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"runtime"
 
 	"github.com/neox5/tbl"
 )
@@ -17,6 +18,11 @@ func main() {
 			fmt.Println()
 			fmt.Println("=== PANIC OCCURRED ===")
 			fmt.Printf("Error: %v\n", r)
+			fmt.Println()
+			fmt.Println("Stack trace:")
+			buf := make([]byte, 4096)
+			n := runtime.Stack(buf, false)
+			fmt.Println(string(buf[:n]))
 			fmt.Println()
 			fmt.Println("Table state at panic:")
 			fmt.Println(t.PrintDebug())

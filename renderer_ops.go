@@ -13,6 +13,8 @@ type (
 	CornerBR struct{}
 	CornerT  struct{} // top junction (─┬─)
 	CornerB  struct{} // bottom junction (─┴─)
+	CornerL  struct{} // left junction (├─)
+	CornerR  struct{} // right junction (─┤)
 	CornerX  struct{} // cross junction (─┼─)
 	HLine    struct{ Width int }
 )
@@ -25,8 +27,8 @@ type (
 		Width  int
 		HAlign HAlign
 	}
+	Space struct{ Width int }
 )
-type Space struct{ Width int }
 
 // Implement marker
 func (CornerTL) renderOp() {}
@@ -35,6 +37,8 @@ func (CornerBL) renderOp() {}
 func (CornerBR) renderOp() {}
 func (CornerT) renderOp()  {}
 func (CornerB) renderOp()  {}
+func (CornerL) renderOp()  {}
+func (CornerR) renderOp()  {}
 func (CornerX) renderOp()  {}
 func (HLine) renderOp()    {}
 func (VLine) renderOp()    {}

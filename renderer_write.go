@@ -10,23 +10,75 @@ type charTemplate struct {
 	cornerBR rune
 	cornerT  rune
 	cornerB  rune
+	cornerL  rune
+	cornerR  rune
 	cornerX  rune
 	hLine    rune
 	vLine    rune
 }
 
-// defaultTemplate is the standard ASCII box drawing character set.
-var defaultTemplate = charTemplate{
+// ASCII template (simple)
+var asciiTemplate = charTemplate{
 	cornerTL: '+',
 	cornerTR: '+',
 	cornerBL: '+',
 	cornerBR: '+',
 	cornerT:  '+',
 	cornerB:  '+',
+	cornerL:  '+',
+	cornerR:  '+',
 	cornerX:  '+',
 	hLine:    '-',
 	vLine:    '|',
 }
+
+// Unicode thin box-drawing
+var thinTemplate = charTemplate{
+	cornerTL: '┌',
+	cornerTR: '┐',
+	cornerBL: '└',
+	cornerBR: '┘',
+	cornerT:  '┬',
+	cornerB:  '┴',
+	cornerL:  '├',
+	cornerR:  '┤',
+	cornerX:  '┼',
+	hLine:    '─',
+	vLine:    '│',
+}
+
+// Unicode thick box-drawing
+var thickTemplate = charTemplate{
+	cornerTL: '┏',
+	cornerTR: '┓',
+	cornerBL: '┗',
+	cornerBR: '┛',
+	cornerT:  '┳',
+	cornerB:  '┻',
+	cornerL:  '┣',
+	cornerR:  '┫',
+	cornerX:  '╋',
+	hLine:    '━',
+	vLine:    '┃',
+}
+
+// Unicode double-line box
+var doubleTemplate = charTemplate{
+	cornerTL: '╔',
+	cornerTR: '╗',
+	cornerBL: '╚',
+	cornerBR: '╝',
+	cornerT:  '╦',
+	cornerB:  '╩',
+	cornerL:  '╠',
+	cornerR:  '╣',
+	cornerX:  '╬',
+	hLine:    '═',
+	vLine:    '║',
+}
+
+// Select the default
+var defaultTemplate = thinTemplate
 
 // writeBorder interprets border instruction sequence using template.
 func (r *renderer) writeBorder(b *strings.Builder, ops []RenderOp) {
@@ -46,10 +98,14 @@ func (r *renderer) writeBorder(b *strings.Builder, ops []RenderOp) {
 			b.WriteRune(tpl.cornerT)
 		case CornerB:
 			b.WriteRune(tpl.cornerB)
+		case CornerL:
+			b.WriteRune(tpl.cornerL)
+		case CornerR:
+			b.WriteRune(tpl.cornerR)
 		case CornerX:
 			b.WriteRune(tpl.cornerX)
 		case HLine:
-			for range v.Width {
+			for i := 0; i < v.Width; i++ {
 				b.WriteRune(tpl.hLine)
 			}
 		}
@@ -68,7 +124,7 @@ func (r *renderer) writeContent(b *strings.Builder, ops []RenderOp) {
 		case Content:
 			writeAlignedContent(b, v.Text, v.Width, v.HAlign)
 		case Space:
-			for range v.Width {
+			for i := 0; i < v.Width; i++ {
 				b.WriteByte(' ')
 			}
 		}
@@ -78,15 +134,12 @@ func (r *renderer) writeContent(b *strings.Builder, ops []RenderOp) {
 
 // writeAlignedContent writes text with alignment and padding.
 func writeAlignedContent(b *strings.Builder, text string, width int, align HAlign) {
-	pad := width - len(text)
-	if pad < 0 {
-		pad = 0
-	}
+	pad := max(0, width-len(text))
 
-	// Simple left align with padding for now
+	// simple left alignment for now
 	b.WriteByte(' ')
 	b.WriteString(text)
-	for range pad + 1 {
+	for i := 0; i < pad+1; i++ {
 		b.WriteByte(' ')
 	}
 }

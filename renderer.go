@@ -92,10 +92,10 @@ func (r *renderer) render() string {
 
 	var b strings.Builder
 
-	for row := 0; row < rows; row++ {
+	for row := range rows {
 		pr := prepareRow(r.grid, r.colWidths, row)
 
-		if pr.borderOps != nil {
+		if pr.borderNeeded {
 			r.writeBorder(&b, pr.borderOps)
 		}
 
@@ -104,35 +104,9 @@ func (r *renderer) render() string {
 		}
 	}
 
-	// Bottom border - reuse buildBorderOps with last row cells
-	lastRow := r.t.g.Rows() - 1
-	cells := r.getCellsInRow(lastRow)
-	bottomOps := buildBottomBorderOps(r.grid, r.colWidths, lastRow, cells)
-	if bottomOps != nil {
-		r.writeBorder(&b, bottomOps)
-	}
+	// Bottom border
+	_, bottomOps := buildBorderOps(r.grid, r.colWidths, r.t.g.Rows())
+	r.writeBorder(&b, bottomOps)
 
 	return b.String()
-}
-
-// getCellsInRow extracts unique cells visible in row.
-func (r *renderer) getCellsInRow(row int) []*Cell {
-	seen := make(map[ID]bool)
-	var cells []*Cell
-
-	for col := 0; col < r.t.g.Cols(); col++ {
-		c := r.grid[row][col]
-		if c != nil && !seen[c.id] {
-			seen[c.id] = true
-			cells = append(cells, c)
-		}
-	}
-
-	return cells
-}
-
-// buildBottomBorderOps constructs bottom border instruction sequence.
-func buildBottomBorderOps(grid [][]*Cell, colWidths []int, row int, cells []*Cell) []RenderOp {
-	// TODO: implement - similar to buildBorderOps but bottom corners
-	return []RenderOp{CornerBL{}, HLine{10}, CornerBR{}}
 }
