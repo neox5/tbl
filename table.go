@@ -147,7 +147,9 @@ func (t *Table) Render() string {
 
 // RenderTo writes the table to w.
 func (t *Table) RenderTo(w io.Writer) error {
-	return newRenderer(t).renderTo(w)
+	s := newRenderer(t).render()
+	_, err := io.WriteString(w, s)
+	return err
 }
 
 // PrintDebug renders table structure in TBL Grid Notation format.

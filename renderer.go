@@ -1,7 +1,6 @@
 package tbl
 
 import (
-	"io"
 	"strings"
 )
 
@@ -86,75 +85,54 @@ func (r *renderer) calculateColumnWidths() {
 
 // render returns the complete ASCII table as a string.
 func (r *renderer) render() string {
+	rows := r.t.g.Rows()
+	if rows == 0 || r.t.g.Cols() == 0 {
+		return ""
+	}
+
 	var b strings.Builder
-	r.renderTo(&b)
+
+	for row := 0; row < rows; row++ {
+		pr := prepareRow(r.grid, r.colWidths, row)
+
+		if pr.borderOps != nil {
+			r.writeBorder(&b, pr.borderOps)
+		}
+
+		for _, lineOps := range pr.contentOps {
+			r.writeContent(&b, lineOps)
+		}
+	}
+
+	// Bottom border - reuse buildBorderOps with last row cells
+	lastRow := r.t.g.Rows() - 1
+	cells := r.getCellsInRow(lastRow)
+	bottomOps := buildBottomBorderOps(r.grid, r.colWidths, lastRow, cells)
+	if bottomOps != nil {
+		r.writeBorder(&b, bottomOps)
+	}
+
 	return b.String()
 }
 
-// renderTo writes the table to w.
-func (r *renderer) renderTo(w io.Writer) error {
-	var b strings.Builder
-	r.renderToBuilder(&b)
-	_, err := io.WriteString(w, b.String())
-	return err
+// getCellsInRow extracts unique cells visible in row.
+func (r *renderer) getCellsInRow(row int) []*Cell {
+	seen := make(map[ID]bool)
+	var cells []*Cell
+
+	for col := 0; col < r.t.g.Cols(); col++ {
+		c := r.grid[row][col]
+		if c != nil && !seen[c.id] {
+			seen[c.id] = true
+			cells = append(cells, c)
+		}
+	}
+
+	return cells
 }
 
-// renderToBuilder does the actual rendering into a strings.Builder.
-func (r *renderer) renderToBuilder(b *strings.Builder) {
-	if r.t.g.Cols() == 0 || r.t.g.Rows() == 0 {
-		return
-	}
-	r.writeHLine(b)
-	for row := 0; row < r.t.g.Rows(); row++ {
-		r.writeRow(b, row)
-	}
-	r.writeHLine(b)
-}
-
-// writeHLine emits a full horizontal border (+---+-...-+).
-func (r *renderer) writeHLine(b *strings.Builder) {
-	b.WriteByte('+')
-	for col, w := range r.colWidths {
-		if col > 0 {
-			b.WriteByte('+')
-		}
-		for i := 0; i < w+2; i++ { // +2 for the two padding spaces
-			b.WriteByte('-')
-		}
-	}
-	b.WriteByte('+')
-	b.WriteByte('\n')
-}
-
-// writeRow emits one visual content row.
-func (r *renderer) writeRow(b *strings.Builder, row int) {
-	b.WriteByte('|')
-	col := 0
-	for col < r.t.g.Cols() {
-		cell := r.grid[row][col]
-		span := cell.cSpan
-		total := 0
-		for i := range span {
-			total += r.colWidths[col+i]
-		}
-		// add padding spaces but remove internal separators
-		total += 2          // left + right padding
-		total -= (span - 1) // remove (span-1) vertical bars
-
-		content := cell.Content()
-		padRight := total - len(content) - 2 // -2 because we already added both paddings
-		b.WriteByte(' ')
-		b.WriteString(content)
-		for range padRight {
-			b.WriteByte(' ')
-		}
-		b.WriteByte(' ')
-
-		col += span
-		if col < r.t.g.Cols() {
-			b.WriteByte('|')
-		}
-	}
-	b.WriteByte('|')
-	b.WriteByte('\n')
+// buildBottomBorderOps constructs bottom border instruction sequence.
+func buildBottomBorderOps(grid [][]*Cell, colWidths []int, row int, cells []*Cell) []RenderOp {
+	// TODO: implement - similar to buildBorderOps but bottom corners
+	return []RenderOp{CornerBL{}, HLine{10}, CornerBR{}}
 }

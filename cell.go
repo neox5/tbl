@@ -8,6 +8,24 @@ const (
 	Flex
 )
 
+// HAlign specifies horizontal text alignment within a cell.
+type HAlign int
+
+const (
+	HAlignLeft HAlign = iota
+	HAlignCenter
+	HAlignRight
+)
+
+// VAlign specifies vertical text alignment within a cell.
+type VAlign int
+
+const (
+	VAlignTop VAlign = iota
+	VAlignMiddle
+	VAlignBottom
+)
+
 // Cell represents a table cell with position, span and content information.
 type Cell struct {
 	id           ID
@@ -16,6 +34,8 @@ type Cell struct {
 	rSpan, cSpan int
 	initialSpan  int // original colSpan at creation
 	content      string
+	hAlign       HAlign // horizontal alignment (not used yet)
+	vAlign       VAlign // vertical alignment (not used yet)
 }
 
 // NewCell creates a new cell.
@@ -29,6 +49,8 @@ func NewCell(id ID, typ CellType, r, c, rSpan, cSpan int, content string) *Cell 
 		cSpan:       cSpan,
 		initialSpan: cSpan,
 		content:     content,
+		hAlign:      HAlignLeft, // default horizontal alignment
+		vAlign:      VAlignTop,  // default vertical alignment
 	}
 }
 
@@ -54,3 +76,9 @@ func (c *Cell) Content() string { return c.content }
 // Width returns the required character width of the cell content.
 // For v1 this is simply the rune length of the content string.
 func (c *Cell) Width() int { return len(c.content) }
+
+// HAlign returns the horizontal alignment of the cell.
+func (c *Cell) HAlign() HAlign { return c.hAlign }
+
+// VAlign returns the vertical alignment of the cell.
+func (c *Cell) VAlign() VAlign { return c.vAlign }

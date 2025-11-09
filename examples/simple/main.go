@@ -10,10 +10,8 @@ func main() {
 	fmt.Println("=== Simple Table Example ===")
 	fmt.Println()
 
-	// Create table
 	t := tbl.New()
 
-	// Defer panic recovery to show debug output
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Println()
@@ -25,13 +23,19 @@ func main() {
 		}
 	}()
 
+	// Row 0: Flex cells (will expand)
 	t.AddRow().
-		AddCell(tbl.Flex, 1, 1, "Title").
-		AddCell(tbl.Static, 2, 1, "Author")
+		AddCell(tbl.Flex, 1, 1, "Name").
+		AddCell(tbl.Flex, 1, 1, "Role")
 
+	// Row 1: Static cells with different structure
 	t.AddRow().
-		AddCell(tbl.Static, 1, 2, "The Go Programming Language")
+		AddCell(tbl.Static, 1, 1, "Alice").
+		AddCell(tbl.Static, 1, 1, "Engineer").
+		AddCell(tbl.Static, 1, 1, "Berlin").
+		AddCell(tbl.Static, 1, 1, "Remote")
 
+	fmt.Println("Rendered table:")
 	fmt.Println(t.Render())
 	fmt.Println()
 	fmt.Println("Debug view:")
