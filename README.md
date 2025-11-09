@@ -9,11 +9,13 @@ Advanced CLI table rendering library for Go with PostgreSQL-style borders, flexi
 **Cell Size**: `[i,j]` - rowSpan i, colSpan j
 
 **Cell Types**:
-- Static: `C[i,j]` 
+
+- Static: `C[i,j]`
 - Flex: `F[i,j]`
 - Default `[1,1]` omitted: `C` = `C[1,1]`, `F` = `F[1,1]`
 
 **Grid Display**:
+
 - Row format: `[ ]`
 - Grid representation: each row denoted with `X:` where X is the row number, starting at 0
 - Static cells: uppercase letters A-Z
@@ -24,12 +26,14 @@ Advanced CLI table rendering library for Go with PostgreSQL-style borders, flexi
 - Cursor position: replace `]` with `/` to show current position
 
 **Step Notation**:
+
 - Step separation: `---`
 - Action notation: `Add_CellType`, `Flex_Expand(+N)`
 - Option notation: `Option_A(Strategy)`, `Option_B(Strategy)`
 - Expansions: `>X` where X is index of the expanded cell in that row
 
 **Examples**:
+
 ```
 C + F        -> [A|a]
 C[1,2] + C   -> [A A|B]
@@ -37,6 +41,7 @@ C3           -> [A|B|C]
 ```
 
 **Grid Examples**:
+
 ```
 0: F+C+F     -> [a|B|c]
 1: C3/       -> [A|B|C/
@@ -47,6 +52,7 @@ C3           -> [A|B|C]
 ```
 
 **Flex Expansion**:
+
 - Show numbered expansion steps starting from 1
 - Display intermediate states during flex resolution
 
@@ -58,6 +64,7 @@ Step 1 (C[1,3] expansion):
 ```
 
 **Full Example**:
+
 ```
 F+C+F
 C2+F/
@@ -80,6 +87,7 @@ C5
 ```
 
 **Visual Output**:
+
 ```
 Initial:
 [a|B|c]

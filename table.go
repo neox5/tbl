@@ -34,9 +34,9 @@ func NewWithCols(cols int) *Table {
 	}
 
 	t := &Table{
-		g:          btmp.NewGridWithSize(0, cols),
+		g:          btmp.NewGridWithSize(1, max(cols, 1)),
 		cells:      make(map[ID]*Cell),
-		row:        -1, // no active row yet
+		row:        -1,
 		col:        0,
 		nextCellID: 1,
 	}
@@ -84,55 +84,57 @@ func (t *Table) AddCell(ct CellType, rowSpan, colSpan int) *Table {
 		panic(fmt.Sprintf("tbl: no row to add cell at cursor (%d,%d)", t.row, t.col))
 	}
 
-	row, col := t.row, t.col
-
 	// Ensure sufficient rows for cell span
-	t.ensureRows(row + rowSpan)
+	t.ensureRows(t.row + rowSpan)
 
 	// Simple check on first row
-	if row == 0 && col+colSpan > t.g.Cols() {
-		if err := t.ensureCols(col + colSpan); err != nil {
+	if t.row == 0 && t.col+colSpan > t.g.Cols() {
+		if err := t.ensureCols(t.col + colSpan); err != nil {
 			panic(err.Error())
 		}
 	}
 
 	// when cell does not fit in the current position, we try to expand
-	if colSpan > t.g.CountZerosFromInRow(row, col) {
+	if colSpan > t.g.CountZerosFromInRow(t.row, t.col) {
 		// Space occupied - wall blocking
 		if t.colsFixed {
-			panic(fmt.Sprintf("tbl: space occupied at cursor (%d,%d), cannot expand", row, col))
+			panic(fmt.Sprintf("tbl: space occupied at cursor (%d,%d), cannot expand", t.row, t.col))
 		}
 
 		// Attempt expansion
-		ok, flexCells := t.traverseFlex(row, col)
+		ok, flexCells := t.traverseFlex(t.row, t.col)
 		if !ok {
-			panic(fmt.Sprintf("tbl: no flex cells available for expansion at cursor (%d,%d)", row, col))
+			panic(fmt.Sprintf("tbl: no flex cells available for expansion at cursor (%d,%d)", t.row, t.col))
 		}
 
 		// Calculate needed columns
-		needed := t.calculateNeeded(row, col, colSpan)
+		needed := t.calculateNeeded(t.row, t.col, colSpan)
 
 		// Add columns to grid
 		t.g.GrowCols(needed)
 
 		// Process rows top to bottom
-		for r := 0; r <= row; r++ {
+		for r := 0; r <= t.row; r++ {
 			if rowFlexCells, exists := flexCells[r]; exists && len(rowFlexCells) > 0 {
 				t.distributeAndExpand(r, rowFlexCells, needed)
 			}
 		}
 	}
 
+	if t.g.B.Test(t.g.Index(t.row, t.col)) {
+		t.col = t.findFirstFreeCol(t.row)
+	}
+
 	// Create cell
 	id := t.nextCellID
 	t.nextCellID++
-	c := NewCell(id, ct, row, col, rowSpan, colSpan)
+	c := NewCell(id, ct, t.row, t.col, rowSpan, colSpan)
 
 	// Store cell
 	t.cells[id] = c
 
 	// Set in grid
-	t.g.SetRect(row, col, rowSpan, colSpan)
+	t.g.SetRect(t.row, t.col, rowSpan, colSpan)
 
 	// Advance cursor
 	t.advance(colSpan)

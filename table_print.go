@@ -9,6 +9,7 @@ import (
 // Shows internal state: dimensions, cursor position, cell count.
 // Grid display uses A-Z for Static cells, a-z for Flex cells.
 // Cursor position indicated by / instead of closing ].
+// Includes btmp.Grid bitmap visualization and underlying Bitmap representation.
 func (t *Table) printDebug() string {
 	var b strings.Builder
 
@@ -20,15 +21,36 @@ func (t *Table) printDebug() string {
 	b.WriteString(fmt.Sprintf("ColsFixed: %v\n", t.colsFixed))
 	b.WriteString("\n")
 
-	// Grid display
-	b.WriteString("Grid:\n")
+	// TBL Grid Notation
+	b.WriteString("Grid (TBL Notation):\n")
 	if t.g.Rows() == 0 {
 		b.WriteString("(empty)\n")
-		return b.String()
+	} else {
+		for row := range t.g.Rows() {
+			b.WriteString(t.renderRow(row))
+			b.WriteString("\n")
+		}
 	}
+	b.WriteString("\n")
 
-	for row := range t.g.Rows() {
-		b.WriteString(t.renderRow(row))
+	// btmp Grid bitmap visualization
+	b.WriteString("Grid (btmp):\n")
+	gridPrint := t.g.Print()
+	if gridPrint == "" {
+		b.WriteString("(empty)\n")
+	} else {
+		b.WriteString(gridPrint)
+		b.WriteString("\n")
+	}
+	b.WriteString("\n")
+
+	// Underlying Bitmap
+	b.WriteString("Bitmap:\n")
+	bitmapPrint := t.g.B.Print()
+	if bitmapPrint == "" {
+		b.WriteString("(empty)\n")
+	} else {
+		b.WriteString(bitmapPrint)
 		b.WriteString("\n")
 	}
 
