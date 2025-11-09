@@ -1,5 +1,7 @@
 package tbl
 
+import "fmt"
+
 // PreparedRow contains all rendering instructions for one cell row.
 type PreparedRow struct {
 	row          int
@@ -15,10 +17,8 @@ func prepareRow(grid [][]*Cell, colWidths []int, row int) *PreparedRow {
 	// Build border instructions
 	pr.borderNeeded, pr.borderOps = buildBorderOps(grid, colWidths, row)
 
-	// Build content instructions (single line for now)
-	pr.contentOps = [][]RenderOp{
-		buildContentOps(grid, colWidths, row),
-	}
+	// Build content instructions
+	pr.contentOps = buildContentOps(grid, colWidths, row)
 
 	return pr
 }
@@ -61,11 +61,12 @@ func buildBorderOps(grid [][]*Cell, colWidths []int, row int) (bool, []RenderOp)
 		ops = append(ops, leftJunction)
 
 		// Top edge (HLine or Space)
+		// Width includes content padding (2 chars from writeAlignedContent)
 		var topEdge RenderOp
 		if rowBoundaryAt(grid, row, col) {
-			topEdge = HLine{Width: colWidths[col]}
+			topEdge = HLine{Width: colWidths[col] + 2}
 		} else {
-			topEdge = Space{Width: colWidths[col]}
+			topEdge = Space{Width: colWidths[col] + 2}
 		}
 		ops = append(ops, topEdge)
 	}
@@ -192,8 +193,90 @@ func selectJunction(grid [][]*Cell, row, col int) RenderOp {
 	return Space{Width: 1}
 }
 
-// buildContentOps constructs content instruction sequence for one line.
-func buildContentOps(grid [][]*Cell, colWidths []int, row int) []RenderOp {
-	// TODO: implement
-	return []RenderOp{VLine{}, Content{"TODO", 10, HAlignLeft}, VLine{}}
+// buildContentOps constructs content instruction sequence for all lines in row.
+// Returns one []RenderOp slice per content line (height currently fixed at 1).
+//
+// Process:
+//  1. Generate cell layouts using Cell.Layout() for each unique cell
+//  2. Build ops per line: VLine + Content for each cell starting position
+//  3. Return ops for all lines (currently single line per row)
+func buildContentOps(grid [][]*Cell, colWidths []int, row int) [][]RenderOp {
+	height := 1 // v1: fixed single line per row
+
+	// Collect unique cells and their layouts
+	type cellLayout struct {
+		cell  *Cell
+		lines []string
+	}
+
+	layouts := make(map[ID]cellLayout)
+
+	// Generate layouts for all cells in row
+	for col := 0; col < len(colWidths); {
+		cell := grid[row][col]
+		if cell == nil {
+			panic(fmt.Sprintf("tbl: nil cell at (%d,%d)", row, col))
+		}
+
+		// Process only at cell start
+		if cell.c == col {
+			width := cellWidth(colWidths, cell)
+			lines := cell.Layout(width, height)
+			layouts[cell.id] = cellLayout{cell: cell, lines: lines}
+			col += cell.cSpan
+		} else {
+			col++
+		}
+	}
+
+	// Build ops for each line
+	result := make([][]RenderOp, height)
+
+	for lineIdx := range height {
+		var ops []RenderOp
+
+		// Process columns left to right
+		for col := 0; col < len(colWidths); {
+			cell := grid[row][col]
+
+			// At cell start: emit VLine + Content
+			if cell.c == col {
+				ops = append(ops, VLine{})
+
+				layout := layouts[cell.id]
+				text := layout.lines[lineIdx]
+				width := cellWidth(colWidths, cell)
+
+				ops = append(ops, Content{
+					Text:   text,
+					Width:  width,
+					HAlign: cell.hAlign,
+				})
+
+				col += cell.cSpan
+			} else {
+				col++
+			}
+		}
+
+		// Right edge VLine
+		ops = append(ops, VLine{})
+
+		result[lineIdx] = ops
+	}
+
+	return result
+}
+
+// cellWidth calculates layout width for cell spanning multiple columns.
+// Accounts for removed VLines and preserved padding between merged segments.
+// Formula: sum(colWidths) + 3×(colSpan-1)
+func cellWidth(colWidths []int, cell *Cell) int {
+	width := 0
+	for i := 0; i < cell.cSpan; i++ {
+		width += colWidths[cell.c+i]
+	}
+	// Add space from removed VLines and padding: 3 chars per span junction
+	width += 3 * (cell.cSpan - 1)
+	return width
 }

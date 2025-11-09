@@ -77,6 +77,9 @@ func (c *Cell) Content() string { return c.content }
 // For v1 this is simply the rune length of the content string.
 func (c *Cell) Width() int { return len(c.content) }
 
+// Height returns the height of the cell.
+func (c *Cell) Height() int { return 1 }
+
 // HAlign returns the horizontal alignment of the cell.
 func (c *Cell) HAlign() HAlign { return c.hAlign }
 
