@@ -26,15 +26,17 @@ func main() {
 	}()
 
 	t.AddRow().
-		AddCell(tbl.Flex, 1, 1).
-		AddCell(tbl.Flex, 1, 1)
+		AddCell(tbl.Flex, 1, 1, "Name").
+		AddCell(tbl.Flex, 1, 1, "Role")
 
 	t.AddRow().
-		AddCell(tbl.Static, 1, 1).
-		AddCell(tbl.Static, 1, 1).
-		AddCell(tbl.Static, 1, 1).
-		AddCell(tbl.Static, 1, 1)
+		AddCell(tbl.Static, 1, 1, "Alice").
+		AddCell(tbl.Static, 1, 1, "Software Engineer").
+		AddCell(tbl.Static, 1, 1, "Remote").
+		AddCell(tbl.Static, 1, 1, "Berlin")
 
-	fmt.Println("Success!")
+	fmt.Println(t.Render())
+	fmt.Println()
+	fmt.Println("Debug view:")
 	fmt.Println(t.PrintDebug())
 }

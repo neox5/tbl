@@ -4,24 +4,22 @@ package tbl
 type CellType int
 
 const (
-	// Static cells have fixed column spans.
 	Static CellType = iota
-
-	// Flex cells can expand to fill available space.
 	Flex
 )
 
-// Cell represents a table cell with position and span information.
+// Cell represents a table cell with position, span and content information.
 type Cell struct {
 	id           ID
 	typ          CellType
 	r, c         int
 	rSpan, cSpan int
-	initialSpan  int // Original colSpan at creation
+	initialSpan  int // original colSpan at creation
+	content      string
 }
 
-// NewCell creates a new cell with specified properties.
-func NewCell(id ID, typ CellType, r, c, rSpan, cSpan int) *Cell {
+// NewCell creates a new cell.
+func NewCell(id ID, typ CellType, r, c, rSpan, cSpan int, content string) *Cell {
 	return &Cell{
 		id:          id,
 		typ:         typ,
@@ -30,21 +28,29 @@ func NewCell(id ID, typ CellType, r, c, rSpan, cSpan int) *Cell {
 		rSpan:       rSpan,
 		cSpan:       cSpan,
 		initialSpan: cSpan,
+		content:     content,
 	}
 }
 
-// Contains checks if cell contains the position (row, col).
+// Contains reports whether the cell covers the given grid position.
 func (c *Cell) Contains(row, col int) bool {
 	return row >= c.r && row < c.r+c.rSpan &&
 		col >= c.c && col < c.c+c.cSpan
 }
 
-// TouchesRow checks if cell spans through the specified row.
+// TouchesRow reports whether the cell overlaps the given row.
 func (c *Cell) TouchesRow(row int) bool {
 	return row >= c.r && row < c.r+c.rSpan
 }
 
-// AddedSpan returns total expansion applied to this cell.
+// AddedSpan returns how many columns were added by flex expansion.
 func (c *Cell) AddedSpan() int {
 	return c.cSpan - c.initialSpan
 }
+
+// Content returns the cell text.
+func (c *Cell) Content() string { return c.content }
+
+// Width returns the required character width of the cell content.
+// For v1 this is simply the rune length of the content string.
+func (c *Cell) Width() int { return len(c.content) }

@@ -4,13 +4,15 @@ package tbl
 // Returns new row index.
 func (t *Table) nextRow() {
 	t.row++
-	t.col = t.findFirstFreeCol(t.row)
+	t.advance()
 }
 
 // advance moves cursor forward by colSpan columns.
-func (t *Table) advance(colSpan int) {
-	if colSpan <= 0 {
-		return
+func (t *Table) advance() {
+	col := t.findFirstFreeCol(t.row)
+	if col == -1 {
+		col = t.g.Cols() - 1
 	}
-	t.col = min(t.col+colSpan, t.g.Cols()-1)
+
+	t.col = col
 }

@@ -2,6 +2,7 @@ package tbl
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/neox5/btmp"
 )
@@ -75,7 +76,7 @@ func (t *Table) AddRow() *Table {
 // Expands columns if needed (when not fixed). Validates span fits in grid.
 // Panics if: no row active, span invalid, insufficient columns (when fixed),
 // or space occupied.
-func (t *Table) AddCell(ct CellType, rowSpan, colSpan int) *Table {
+func (t *Table) AddCell(ct CellType, rowSpan, colSpan int, content string) *Table {
 	if rowSpan <= 0 || colSpan <= 0 {
 		panic(fmt.Sprintf("tbl: invalid span rowSpan=%d colSpan=%d at cursor (%d,%d)", rowSpan, colSpan, t.row, t.col))
 	}
@@ -128,18 +129,25 @@ func (t *Table) AddCell(ct CellType, rowSpan, colSpan int) *Table {
 	// Create cell
 	id := t.nextCellID
 	t.nextCellID++
-	c := NewCell(id, ct, t.row, t.col, rowSpan, colSpan)
 
 	// Store cell
+	c := NewCell(id, ct, t.row, t.col, rowSpan, colSpan, content)
 	t.cells[id] = c
 
 	// Set in grid
 	t.g.SetRect(t.row, t.col, rowSpan, colSpan)
-
-	// Advance cursor
-	t.advance(colSpan)
-
+	t.advance()
 	return t
+}
+
+// Render returns the psql-style ASCII table as a string.
+func (t *Table) Render() string {
+	return newRenderer(t).render()
+}
+
+// RenderTo writes the table to w.
+func (t *Table) RenderTo(w io.Writer) error {
+	return newRenderer(t).renderTo(w)
 }
 
 // PrintDebug renders table structure in TBL Grid Notation format.

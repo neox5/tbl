@@ -26,12 +26,14 @@ func main() {
 	}()
 
 	t.AddRow().
-		AddCell(tbl.Flex, 1, 1).
-		AddCell(tbl.Static, 2, 1)
+		AddCell(tbl.Flex, 1, 1, "Title").
+		AddCell(tbl.Static, 2, 1, "Author")
 
 	t.AddRow().
-		AddCell(tbl.Static, 1, 2)
+		AddCell(tbl.Static, 1, 2, "The Go Programming Language")
 
-	fmt.Println("Success!")
+	fmt.Println(t.Render())
+	fmt.Println()
+	fmt.Println("Debug view:")
 	fmt.Println(t.PrintDebug())
 }
