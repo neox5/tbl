@@ -21,6 +21,12 @@ type Table struct {
 
 	colsFixed  bool
 	nextCellID ID
+
+	// Style registry
+	defaultStyle CellStyle
+	columnStyles map[int]CellStyle
+	rowStyles    map[int]CellStyle
+	cellStyles   map[ID]CellStyle
 }
 
 // New creates a new Table with zero columns.
@@ -40,6 +46,16 @@ func NewWithCols(cols int) *Table {
 		row:        -1,
 		col:        0,
 		nextCellID: 1,
+
+		// Initialize style registry
+		defaultStyle: CellStyle{
+			Padding: Padding{Top: 0, Bottom: 0, Left: 1, Right: 1},
+			HAlign:  HAlignLeft,
+			VAlign:  VAlignTop,
+		},
+		columnStyles: make(map[int]CellStyle),
+		rowStyles:    make(map[int]CellStyle),
+		cellStyles:   make(map[ID]CellStyle),
 	}
 
 	if cols > 0 {
@@ -150,6 +166,32 @@ func (t *Table) RenderTo(w io.Writer) error {
 	s := newRenderer(t).render()
 	_, err := io.WriteString(w, s)
 	return err
+}
+
+// SetDefaultPadding updates table default padding.
+func (t *Table) SetDefaultPadding(p Padding) {
+	t.defaultStyle.Padding = p
+}
+
+// SetColumnPadding sets padding for column.
+func (t *Table) SetColumnPadding(col int, p Padding) {
+	cs := t.columnStyles[col]
+	cs.Padding = p
+	t.columnStyles[col] = cs
+}
+
+// SetRowPadding sets padding for row.
+func (t *Table) SetRowPadding(row int, p Padding) {
+	rs := t.rowStyles[row]
+	rs.Padding = p
+	t.rowStyles[row] = rs
+}
+
+// SetCellPadding sets padding for specific cell.
+func (t *Table) SetCellPadding(id ID, p Padding) {
+	cs := t.cellStyles[id]
+	cs.Padding = p
+	t.cellStyles[id] = cs
 }
 
 // PrintDebug renders table structure in TBL Grid Notation format.

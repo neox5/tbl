@@ -13,24 +13,6 @@ const (
 	Flex
 )
 
-// HAlign specifies horizontal text alignment within a cell.
-type HAlign int
-
-const (
-	HAlignLeft HAlign = iota
-	HAlignCenter
-	HAlignRight
-)
-
-// VAlign specifies vertical text alignment within a cell.
-type VAlign int
-
-const (
-	VAlignTop VAlign = iota
-	VAlignMiddle
-	VAlignBottom
-)
-
 // Cell represents a table cell with position, span and content information.
 type Cell struct {
 	id           ID
@@ -39,8 +21,8 @@ type Cell struct {
 	rSpan, cSpan int
 	initialSpan  int // original colSpan at creation
 	content      string
-	hAlign       HAlign   // horizontal alignment (not used yet)
-	vAlign       VAlign   // vertical alignment (not used yet)
+	hAlign       HAlign   // horizontal alignment (default from style)
+	vAlign       VAlign   // vertical alignment (default from style)
 	rawLines     []string // unconstraint content lines
 }
 

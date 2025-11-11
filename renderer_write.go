@@ -122,7 +122,7 @@ func (r *renderer) writeContent(b *strings.Builder, ops []RenderOp) {
 		case VLine:
 			b.WriteRune(tpl.vLine)
 		case Content:
-			writeAlignedContent(b, v.Text, v.Width, v.HAlign)
+			b.WriteString(v.Text) // just write finalized text
 		case Space:
 			for i := 0; i < v.Width; i++ {
 				b.WriteByte(' ')
@@ -130,16 +130,4 @@ func (r *renderer) writeContent(b *strings.Builder, ops []RenderOp) {
 		}
 	}
 	b.WriteByte('\n')
-}
-
-// writeAlignedContent writes text with alignment and padding.
-func writeAlignedContent(b *strings.Builder, text string, width int, align HAlign) {
-	pad := max(0, width-len(text))
-
-	// simple left alignment for now
-	b.WriteByte(' ')
-	b.WriteString(text)
-	for i := 0; i < pad+1; i++ {
-		b.WriteByte(' ')
-	}
 }

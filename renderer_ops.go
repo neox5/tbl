@@ -22,12 +22,8 @@ type (
 // Content instructions
 type (
 	VLine   struct{}
-	Content struct {
-		Text   string
-		Width  int
-		HAlign HAlign
-	}
-	Space struct{ Width int }
+	Content struct{ Text string } // finalized line (includes padding, alignment)
+	Space   struct{ Width int }
 )
 
 // Implement marker
