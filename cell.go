@@ -1,5 +1,7 @@
 package tbl
 
+import "strings"
+
 // CellType indicates whether a cell is static or flexible.
 type CellType int
 
@@ -48,7 +50,7 @@ func NewCell(id ID, typ CellType, r, c, rSpan, cSpan int, content string) *Cell 
 		rSpan:       rSpan,
 		cSpan:       cSpan,
 		initialSpan: cSpan,
-		content:     content,
+		content:     strings.TrimSpace(content),
 		hAlign:      HAlignLeft, // default horizontal alignment
 		vAlign:      VAlignTop,  // default vertical alignment
 	}
