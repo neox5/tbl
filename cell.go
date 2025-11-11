@@ -1,6 +1,9 @@
 package tbl
 
-import "strings"
+import (
+	"math"
+	"strings"
+)
 
 // CellType indicates whether a cell is static or flexible.
 type CellType int
@@ -36,13 +39,14 @@ type Cell struct {
 	rSpan, cSpan int
 	initialSpan  int // original colSpan at creation
 	content      string
-	hAlign       HAlign // horizontal alignment (not used yet)
-	vAlign       VAlign // vertical alignment (not used yet)
+	hAlign       HAlign   // horizontal alignment (not used yet)
+	vAlign       VAlign   // vertical alignment (not used yet)
+	rawLines     []string // unconstraint content lines
 }
 
 // NewCell creates a new cell.
 func NewCell(id ID, typ CellType, r, c, rSpan, cSpan int, content string) *Cell {
-	return &Cell{
+	cell := &Cell{
 		id:          id,
 		typ:         typ,
 		r:           r,
@@ -54,6 +58,10 @@ func NewCell(id ID, typ CellType, r, c, rSpan, cSpan int, content string) *Cell 
 		hAlign:      HAlignLeft, // default horizontal alignment
 		vAlign:      VAlignTop,  // default vertical alignment
 	}
+
+	cell.rawLines = buildRawLines(cell.content, math.MaxInt)
+
+	return cell
 }
 
 // Contains reports whether the cell covers the given grid position.
@@ -75,12 +83,21 @@ func (c *Cell) AddedSpan() int {
 // Content returns the cell text.
 func (c *Cell) Content() string { return c.content }
 
-// Width returns the required character width of the cell content.
-// For v1 this is simply the rune length of the content string.
-func (c *Cell) Width() int { return len(c.content) }
+// Width returns the required character width of the cell content (unconstraint).
+func (c *Cell) Width() int {
+	var width int
+	for _, l := range c.rawLines {
+		if len(l) > width {
+			width = len(l)
+		}
+	}
+	return width
+}
 
-// Height returns the height of the cell.
-func (c *Cell) Height() int { return 1 }
+// Height returns the required lines of the cell content (unconstraint).
+func (c *Cell) Height() int {
+	return len(c.rawLines)
+}
 
 // HAlign returns the horizontal alignment of the cell.
 func (c *Cell) HAlign() HAlign { return c.hAlign }

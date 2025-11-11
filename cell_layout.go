@@ -6,16 +6,14 @@ import "strings"
 // Returns one string per line with alignment applied.
 //
 // Process:
-//  1. Build raw lines from words (respecting width and line breaks)
-//  2. Apply horizontal alignment to each line
-//  3. Apply vertical alignment (padding/truncation to height)
+//  1. Apply horizontal alignment to each line
+//  2. Apply vertical alignment (padding/truncation to height)
 func (c *Cell) Layout(width, height int) []string {
 	if width <= 0 || height <= 0 {
 		return []string{}
 	}
 
-	rawLines := buildRawLines(c.content, width)
-	haLines := applyHAlign(rawLines, width, c.hAlign)
+	haLines := applyHAlign(c.rawLines, width, c.hAlign)
 	vaLines := applyVAlign(haLines, width, height, c.vAlign)
 
 	return vaLines

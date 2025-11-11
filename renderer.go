@@ -44,11 +44,7 @@ func (r *renderer) buildGrid() {
 // 1. base width = maximum cell.Width() that starts in this column
 // 2. for every cell with cSpan>1 enforce minimum by equal distribution
 func (r *renderer) calculateColumnWidths() {
-	cols := r.t.g.Cols()
-	if cols == 0 {
-		return
-	}
-	r.colWidths = make([]int, cols)
+	r.colWidths = make([]int, r.t.g.Cols())
 
 	// 1. measure per-column maximum
 	for _, cell := range r.t.cells {
