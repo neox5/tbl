@@ -8,13 +8,13 @@ import "strings"
 // Process:
 //  1. Apply horizontal alignment to each line
 //  2. Apply vertical alignment (padding/truncation to height)
-func (c *Cell) Layout(width, height int) []string {
+func (c *Cell) Layout(width, height int, hAlign HAlign, vAlign VAlign) []string {
 	if width <= 0 || height <= 0 {
 		return []string{}
 	}
 
-	haLines := applyHAlign(c.rawLines, width, c.hAlign)
-	vaLines := applyVAlign(haLines, width, height, c.vAlign)
+	haLines := applyHAlign(c.rawLines, width, hAlign)
+	vaLines := applyVAlign(haLines, width, height, vAlign)
 
 	return vaLines
 }

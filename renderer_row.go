@@ -1,6 +1,9 @@
 package tbl
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // PreparedRow contains all rendering instructions for one cell row.
 type PreparedRow struct {
@@ -11,14 +14,21 @@ type PreparedRow struct {
 }
 
 // prepareRow analyzes cell row and builds rendering instructions.
-func prepareRow(grid [][]*Cell, colWidths []int, row int) *PreparedRow {
+func prepareRow(
+	grid [][]*Cell,
+	colWidths []int,
+	cellLayouts map[ID][]string,
+	rowHeights []int,
+	row int,
+	resolveStyle func(*Cell) CellStyle,
+) *PreparedRow {
 	pr := &PreparedRow{row: row}
 
 	// Build border instructions
 	pr.borderNeeded, pr.borderOps = buildBorderOps(grid, colWidths, row)
 
 	// Build content instructions
-	pr.contentOps = buildContentOps(grid, colWidths, row)
+	pr.contentOps = buildContentOps(grid, colWidths, cellLayouts, rowHeights, row, resolveStyle)
 
 	return pr
 }
@@ -64,9 +74,9 @@ func buildBorderOps(grid [][]*Cell, colWidths []int, row int) (bool, []RenderOp)
 		// Width includes content padding (2 chars from writeAlignedContent)
 		var topEdge RenderOp
 		if rowBoundaryAt(grid, row, col) {
-			topEdge = HLine{Width: colWidths[col] + 2}
+			topEdge = HLine{Width: colWidths[col]}
 		} else {
-			topEdge = Space{Width: colWidths[col] + 2}
+			topEdge = Space{Width: colWidths[col]}
 		}
 		ops = append(ops, topEdge)
 	}
@@ -193,65 +203,78 @@ func selectJunction(grid [][]*Cell, row, col int) RenderOp {
 	return Space{Width: 1}
 }
 
-// buildContentOps constructs content instruction sequence for all lines in row.
-// Returns one []RenderOp slice per content line (height currently fixed at 1).
-//
-// Process:
-//  1. Generate cell layouts using Cell.Layout() for each unique cell
-//  2. Build ops per line: VLine + Content for each cell starting position
-//  3. Return ops for all lines (currently single line per row)
-func buildContentOps(grid [][]*Cell, colWidths []int, row int) [][]RenderOp {
-	height := 1 // v1: fixed single line per row
-
-	// Collect unique cells and their layouts
-	type cellLayout struct {
-		cell  *Cell
-		lines []string
-	}
-
-	layouts := make(map[ID]cellLayout)
-
-	// Generate layouts for all cells in row
-	for col := 0; col < len(colWidths); {
-		cell := grid[row][col]
-		if cell == nil {
-			panic(fmt.Sprintf("tbl: nil cell at (%d,%d)", row, col))
-		}
-
-		// Process only at cell start
-		if cell.c == col {
-			width := cellWidth(colWidths, cell)
-			lines := cell.Layout(width, height)
-			layouts[cell.id] = cellLayout{cell: cell, lines: lines}
-			col += cell.cSpan
-		} else {
-			col++
-		}
-	}
-
-	// Build ops for each line
+// buildContentOps constructs content ops for one grid row.
+// Applies padding to content lines and distributes across rowHeight lines.
+func buildContentOps(
+	grid [][]*Cell,
+	colWidths []int,
+	cellLayouts map[ID][]string,
+	rowHeights []int,
+	row int,
+	resolveStyle func(*Cell) CellStyle,
+) [][]RenderOp {
+	height := rowHeights[row]
 	result := make([][]RenderOp, height)
 
 	for lineIdx := range height {
 		var ops []RenderOp
 
-		// Process columns left to right
 		for col := 0; col < len(colWidths); {
 			cell := grid[row][col]
+			if cell == nil {
+				panic(fmt.Sprintf("tbl: nil cell at (%d,%d)", row, col))
+			}
 
-			// At cell start: emit VLine + Content
+			// Only at cell start column
 			if cell.c == col {
 				ops = append(ops, VLine{})
 
-				layout := layouts[cell.id]
-				text := layout.lines[lineIdx]
-				width := cellWidth(colWidths, cell)
+				style := resolveStyle(cell)
+				contentLines := cellLayouts[cell.id]
 
-				ops = append(ops, Content{
-					Text:   text,
-					Width:  width,
-					HAlign: cell.hAlign,
-				})
+				// Calculate which line of cell to render
+				// For multi-row cells: need offset based on previous rows
+				var cellLineIdx int
+				if cell.r == row {
+					// Cell starts this row
+					cellLineIdx = lineIdx
+				} else {
+					// Cell started in previous row(s)
+					// Sum up lines from previous rows
+					prevLines := 0
+					for r := cell.r; r < row; r++ {
+						prevLines += rowHeights[r]
+					}
+					cellLineIdx = prevLines + lineIdx
+				}
+
+				// Determine text for this line
+				var text string
+				totalLines := style.Padding.Top + len(contentLines) + style.Padding.Bottom
+
+				if cellLineIdx < style.Padding.Top {
+					// Top padding line
+					totalWidth := cellWidth(colWidths, cell)
+					text = strings.Repeat(" ", totalWidth)
+				} else if cellLineIdx < style.Padding.Top+len(contentLines) {
+					// Content line with horizontal padding
+					contentIdx := cellLineIdx - style.Padding.Top
+					contentLine := contentLines[contentIdx]
+
+					leftPad := strings.Repeat(" ", style.Padding.Left)
+					rightPad := strings.Repeat(" ", style.Padding.Right)
+					text = leftPad + contentLine + rightPad
+				} else if cellLineIdx < totalLines {
+					// Bottom padding line
+					totalWidth := cellWidth(colWidths, cell)
+					text = strings.Repeat(" ", totalWidth)
+				} else {
+					// Beyond cell height (row taller than this cell)
+					totalWidth := cellWidth(colWidths, cell)
+					text = strings.Repeat(" ", totalWidth)
+				}
+
+				ops = append(ops, Content{Text: text})
 
 				col += cell.cSpan
 			} else {
@@ -259,24 +282,9 @@ func buildContentOps(grid [][]*Cell, colWidths []int, row int) [][]RenderOp {
 			}
 		}
 
-		// Right edge VLine
 		ops = append(ops, VLine{})
-
 		result[lineIdx] = ops
 	}
 
 	return result
-}
-
-// cellWidth calculates layout width for cell spanning multiple columns.
-// Accounts for removed VLines and preserved padding between merged segments.
-// Formula: sum(colWidths) + 3×(colSpan-1)
-func cellWidth(colWidths []int, cell *Cell) int {
-	width := 0
-	for i := 0; i < cell.cSpan; i++ {
-		width += colWidths[cell.c+i]
-	}
-	// Add space from removed VLines and padding: 3 chars per span junction
-	width += 3 * (cell.cSpan - 1)
-	return width
 }
