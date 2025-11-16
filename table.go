@@ -67,24 +67,7 @@ func NewWithCols(cols int) *Table {
 
 // AddRow advances to next row with validation and cursor positioning.
 func (t *Table) AddRow() *Table {
-	// Validate previous row if not first row
-	if t.row >= 0 {
-		if !t.isRowComplete(t.row) {
-			panic(fmt.Sprintf("tbl: incomplete row %d before AddRow", t.row))
-		}
-
-		// Check if we can fix columns
-		if !t.colsFixed && t.isRowStatic(t.row) {
-			t.colsFixed = true
-		}
-	}
-
-	// Ensure next row exists
-	t.ensureRows(t.row + 2) // t.row = current row index; +1 current row count; +2 next row count
-
-	// Advance to next row
-	t.nextRow()
-
+	t.addRow()
 	return t
 }
 
@@ -101,62 +84,11 @@ func (t *Table) AddCell(ct CellType, rowSpan, colSpan int, content string) *Tabl
 		panic(fmt.Sprintf("tbl: no row to add cell at cursor (%d,%d)", t.row, t.col))
 	}
 
-	// Ensure sufficient rows for cell span
-	t.ensureRows(t.row + rowSpan)
-
-	// Simple check on first row
-	if t.row == 0 && t.col+colSpan > t.g.Cols() {
-		if err := t.ensureCols(t.col + colSpan); err != nil {
-			panic(err.Error())
-		}
-	}
-
-	// when cell does not fit in the current position, we try to expand
-	if colSpan > t.g.CountZerosFromInRow(t.row, t.col) {
-		// Space occupied - wall blocking
-		if t.colsFixed {
-			panic(fmt.Sprintf("tbl: space occupied at cursor (%d,%d), cannot expand", t.row, t.col))
-		}
-
-		// Attempt expansion
-		ok, flexCells := t.traverseFlex(t.row, t.col)
-		if !ok {
-			panic(fmt.Sprintf("tbl: no flex cells available for expansion at cursor (%d,%d)", t.row, t.col))
-		}
-
-		// Calculate needed columns
-		needed := t.calculateNeeded(t.row, t.col, colSpan)
-
-		// Add columns to grid
-		t.g.GrowCols(needed)
-
-		// Process rows top to bottom
-		for r := 0; r <= t.row; r++ {
-			if rowFlexCells, exists := flexCells[r]; exists && len(rowFlexCells) > 0 {
-				t.distributeAndExpand(r, rowFlexCells, needed)
-			}
-		}
-	}
-
-	if t.g.B.Test(t.g.Index(t.row, t.col)) {
-		t.col = t.findFirstFreeCol(t.row)
-	}
-
-	// Create cell
-	id := t.nextCellID
-	t.nextCellID++
-
-	// Store cell
-	c := NewCell(id, ct, t.row, t.col, rowSpan, colSpan, content)
-	t.cells[id] = c
-
-	// Set in grid
-	t.g.SetRect(t.row, t.col, rowSpan, colSpan)
-	t.advance()
+	t.addCell(ct, rowSpan, colSpan, content)
 	return t
 }
 
-// Render returns the psql-style ASCII table as a string.
+// Render returns the ASCII table as a string.
 func (t *Table) Render() string {
 	return newRenderer(t).render()
 }
