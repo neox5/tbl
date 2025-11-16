@@ -1,5 +1,23 @@
 package tbl
 
+// BorderSide defines which edges of a cell have borders.
+type BorderSide uint8
+
+const (
+	BorderNone   BorderSide = 0
+	BorderTop    BorderSide = 1 << 0 // 0001
+	BorderRight  BorderSide = 1 << 1 // 0010
+	BorderBottom BorderSide = 1 << 2 // 0100
+	BorderLeft   BorderSide = 1 << 3 // 1000
+
+	BorderAll = BorderTop | BorderRight | BorderBottom | BorderLeft
+)
+
+// Border specifies which edges of a cell should render borders.
+type Border struct {
+	Sides BorderSide
+}
+
 // HAlign specifies horizontal text alignment within a cell.
 type HAlign int
 
@@ -28,6 +46,7 @@ type CellStyle struct {
 	Padding Padding
 	HAlign  HAlign
 	VAlign  VAlign
+	Border  Border
 }
 
 // merge applies non-zero overrides from other style to this style.
@@ -53,6 +72,9 @@ func (s CellStyle) merge(other CellStyle) CellStyle {
 	// Alignment always override
 	result.HAlign = other.HAlign
 	result.VAlign = other.VAlign
+
+	// Border always override
+	result.Border = other.Border
 
 	return result
 }

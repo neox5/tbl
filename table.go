@@ -52,6 +52,7 @@ func NewWithCols(cols int) *Table {
 			Padding: Padding{Top: 0, Bottom: 0, Left: 1, Right: 1},
 			HAlign:  HAlignLeft,
 			VAlign:  VAlignTop,
+			Border:  Border{Sides: BorderNone},
 		},
 		columnStyles: make(map[int]CellStyle),
 		rowStyles:    make(map[int]CellStyle),
