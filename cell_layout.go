@@ -3,20 +3,65 @@ package tbl
 import "strings"
 
 // Layout formats cell content within given constraints.
-// Returns one string per line with alignment applied.
+// Returns complete lines with padding and alignment applied.
+// width and height include padding space.
 //
 // Process:
-//  1. Apply horizontal alignment to each line
-//  2. Apply vertical alignment (padding/truncation to height)
-func (c *Cell) Layout(width, height int, hAlign HAlign, vAlign VAlign) []string {
+//  1. Calculate content dimensions (subtract padding)
+//  2. Build content lines with word wrapping
+//  3. Apply horizontal alignment to each line
+//  4. Apply vertical alignment (padding/truncation to height)
+//  5. Add horizontal padding to each line
+func (c *Cell) Layout(width, height int, style CellStyle) []string {
 	if width <= 0 || height <= 0 {
 		return []string{}
 	}
 
-	haLines := applyHAlign(c.rawLines, width, hAlign)
-	vaLines := applyVAlign(haLines, width, height, vAlign)
+	// Calculate content dimensions
+	contentWidth := width - style.Padding.Left - style.Padding.Right
+	contentHeight := height - style.Padding.Top - style.Padding.Bottom
 
-	return vaLines
+	if contentWidth <= 0 || contentHeight <= 0 {
+		// All padding, no content space
+		emptyLine := strings.Repeat(" ", width)
+		lines := make([]string, height)
+		for i := range lines {
+			lines[i] = emptyLine
+		}
+		return lines
+	}
+
+	// Build content lines with wrapping
+	contentLines := buildRawLines(c.content, contentWidth)
+
+	// Apply horizontal alignment
+	alignedLines := applyHAlign(contentLines, contentWidth, style.HAlign)
+
+	// Apply vertical alignment
+	paddedLines := applyVAlign(alignedLines, contentWidth, contentHeight, style.VAlign)
+
+	// Add horizontal padding to each line
+	leftPad := strings.Repeat(" ", style.Padding.Left)
+	rightPad := strings.Repeat(" ", style.Padding.Right)
+	finalLines := make([]string, height)
+
+	// Top padding
+	emptyLine := strings.Repeat(" ", width)
+	for i := range style.Padding.Top {
+		finalLines[i] = emptyLine
+	}
+
+	// Content lines with horizontal padding
+	for i, line := range paddedLines {
+		finalLines[style.Padding.Top+i] = leftPad + line + rightPad
+	}
+
+	// Bottom padding
+	for i := style.Padding.Top + len(paddedLines); i < height; i++ {
+		finalLines[i] = emptyLine
+	}
+
+	return finalLines
 }
 
 // buildRawLines converts content into lines that fit width.

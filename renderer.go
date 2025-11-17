@@ -8,9 +8,11 @@ import (
 // renderer holds everything needed to produce the final ASCII table.
 type renderer struct {
 	t             *Table
-	colMaxPadding []int // max(paddingLeft + paddingRight) per column
+	colMaxPadding []int
 	colWidths     []int
 	rowHeights    []int
+	colBorders    []bool // Physical column border presence
+	rowBorders    []bool // Physical row border presence
 	grid          [][]*Cell
 	cellLayouts   map[ID][]string // pre-computed content lines per cell
 }
@@ -21,9 +23,10 @@ type renderer struct {
 // Calculation order:
 //  1. Build grid and track max padding per column
 //  2. Calculate natural column widths with constraints
-//  3. Enforce global table width constraint
-//  4. Calculate row heights with final column widths
-//  5. Generate cell layouts
+//  3. Update border presence (colBorders, rowBorders)
+//  4. Enforce global table width constraint
+//  5. Calculate row heights with final column widths
+//  6. Generate cell layouts
 func newRenderer(t *Table) *renderer {
 	if !t.g.B.All() {
 		panic("tbl: incomplete table")
@@ -37,6 +40,8 @@ func newRenderer(t *Table) *renderer {
 		colMaxPadding: make([]int, cols),
 		colWidths:     make([]int, cols),
 		rowHeights:    make([]int, rows),
+		colBorders:    make([]bool, cols+1),
+		rowBorders:    make([]bool, rows+1),
 		grid:          make([][]*Cell, rows),
 		cellLayouts:   make(map[ID][]string),
 	}
@@ -46,7 +51,7 @@ func newRenderer(t *Table) *renderer {
 		r.grid[i] = make([]*Cell, cols)
 	}
 
-	// Pass 1: Grid population, padding tracking, and width calculation
+	// Pass 1: Grid population, padding tracking, width calculation, and border tracking
 	for _, cell := range t.cells {
 		// Resolve style once per cell
 		style := t.resolveStyle(cell)
@@ -63,6 +68,9 @@ func newRenderer(t *Table) *renderer {
 
 		// Update column widths
 		r.updateColWidths(cell, style)
+
+		// Update border presence
+		r.updateBorders(cell, style)
 	}
 
 	// Enforce global table width constraint
@@ -151,12 +159,32 @@ func (r *renderer) applyColConstraints(width int, cfg ColConfig) int {
 	return width
 }
 
+// updateBorders marks border presence based on cell style.
+// Border exists if Sides requests visual OR Physical requests space.
+func (r *renderer) updateBorders(cell *Cell, style CellStyle) {
+	if style.Border.HasTop() {
+		r.rowBorders[cell.r] = true
+	}
+
+	if style.Border.HasBottom() {
+		r.rowBorders[cell.r+cell.rSpan] = true
+	}
+
+	if style.Border.HasLeft() {
+		r.colBorders[cell.c] = true
+	}
+
+	if style.Border.HasRight() {
+		r.colBorders[cell.c+cell.cSpan] = true
+	}
+}
+
 // updateRowHeights calculates and updates row heights for cell.
 // Uses final column widths to determine content wrapping.
 // Handles both single-row (span=1) and multi-row (span>1) cells.
 func (r *renderer) updateRowHeights(cell *Cell, style CellStyle) {
 	// Calculate final width for this cell
-	totalWidth := cellWidth(r.colWidths, cell)
+	totalWidth := cellWidth(r.colWidths, r.colBorders, cell)
 	contentWidth := totalWidth - style.Padding.Left - style.Padding.Right
 
 	// Rebuild content lines with final width constraint
@@ -216,21 +244,40 @@ func (r *renderer) colMinWidth(col int) (int, bool) {
 }
 
 // enforceTableMaxWidth reduces column widths if total exceeds TableConfig.MaxWidth.
+// Accounts for physical borders in total width calculation.
 // Reduction strategy: left-to-right until hitting minimums, remainder distributed evenly.
 //
 // Algorithm:
-//  1. Calculate minimum possible table width and identify reducible columns
-//  2. Panic if minimum exceeds MaxWidth
-//  3. Calculate current total width
-//  4. If total <= MaxWidth: no action
-//  5. Reduce columns left-to-right until hitting minimums
-//  6. Distribute remainder evenly across reducible columns
+//  1. Calculate physical border count
+//  2. Calculate available width for content (MaxWidth - borders)
+//  3. Calculate minimum possible table width and identify reducible columns
+//  4. Panic if minimum exceeds available width
+//  5. Calculate current total width
+//  6. If total <= available width: no action
+//  7. Reduce columns left-to-right until hitting minimums
+//  8. Distribute remainder evenly across reducible columns
 func (r *renderer) enforceTableMaxWidth() {
 	if r.t.tableConfig.MaxWidth <= 0 {
 		return
 	}
 
-	// Calculate minimum table width and identify reducible columns
+	// Calculate physical border count
+	borderCount := 0
+	for _, exists := range r.colBorders {
+		if exists {
+			borderCount++
+		}
+	}
+
+	// Available width for content
+	availableWidth := r.t.tableConfig.MaxWidth - borderCount
+
+	if availableWidth <= 0 {
+		panic(fmt.Sprintf("tbl: MaxWidth %d insufficient for %d borders",
+			r.t.tableConfig.MaxWidth, borderCount))
+	}
+
+	// Calculate minimum possible width and identify reducible columns
 	minPossible := 0
 	reducible := make([]int, 0, len(r.colWidths))
 
@@ -243,8 +290,9 @@ func (r *renderer) enforceTableMaxWidth() {
 		}
 	}
 
-	if minPossible > r.t.tableConfig.MaxWidth {
-		panic(fmt.Sprintf("tbl: impossible MaxWidth constraint: minimum possible width %d exceeds MaxWidth %d", minPossible, r.t.tableConfig.MaxWidth))
+	if minPossible > availableWidth {
+		panic(fmt.Sprintf("tbl: impossible MaxWidth constraint: minimum possible width %d exceeds available width %d (MaxWidth %d - %d borders)",
+			minPossible, availableWidth, r.t.tableConfig.MaxWidth, borderCount))
 	}
 
 	// Calculate current total
@@ -253,11 +301,11 @@ func (r *renderer) enforceTableMaxWidth() {
 		total += w
 	}
 
-	if total <= r.t.tableConfig.MaxWidth {
+	if total <= availableWidth {
 		return
 	}
 
-	excess := total - r.t.tableConfig.MaxWidth
+	excess := total - availableWidth
 
 	// Reduce left-to-right until hitting minimums
 	for _, col := range reducible {
@@ -302,39 +350,59 @@ func (r *renderer) enforceTableMaxWidth() {
 }
 
 // cellWidth calculates total layout width for cell spanning multiple columns.
-// colWidths already include padding, so only add space for removed VLines.
-// Formula: sum(colWidths) + (colSpan - 1)
-func cellWidth(colWidths []int, cell *Cell) int {
+// Accounts for physical borders that are removed within cell span.
+func cellWidth(colWidths []int, colBorders []bool, cell *Cell) int {
 	width := 0
-	for i := 0; i < cell.cSpan; i++ {
+
+	// Sum column widths
+	for i := range cell.cSpan {
 		width += colWidths[cell.c+i]
 	}
-	// Add space from removed VLines: 1 char per span junction
-	width += cell.cSpan - 1
+
+	// Add space from removed internal vertical borders
+	// Check borders between columns within cell span
+	for i := 1; i < cell.cSpan; i++ {
+		if colBorders[cell.c+i] {
+			width++ // Border column removed, add its width
+		}
+	}
+
 	return width
 }
 
+// cellHeight calculates total layout height for cell spanning multiple rows.
+// Accounts for physical borders that are removed within cell span.
+func cellHeight(rowHeights []int, rowBorders []bool, cell *Cell) int {
+	height := 0
+
+	// Sum row heights
+	for i := range cell.rSpan {
+		height += rowHeights[cell.r+i]
+	}
+
+	// Add space from removed internal horizontal borders
+	// Check borders between rows within cell span
+	for i := 1; i < cell.rSpan; i++ {
+		if rowBorders[cell.r+i] {
+			height++ // Border line removed, add its height
+		}
+	}
+
+	return height
+}
+
 // buildCellLayouts generates content lines for all cells using finalized dimensions.
-// Content includes horizontal and vertical alignment but excludes padding.
-// Padding applied during rendering via buildContentOps.
+// Content includes padding, horizontal and vertical alignment - ready to render.
 func (r *renderer) buildCellLayouts() {
 	for _, cell := range r.t.cells {
 		style := r.t.resolveStyle(cell)
 
-		// Calculate content width (total width minus padding)
-		totalWidth := cellWidth(r.colWidths, cell)
-		contentWidth := totalWidth - style.Padding.Left - style.Padding.Right
+		// Calculate total dimensions (including padding)
+		totalWidth := cellWidth(r.colWidths, r.colBorders, cell)
+		totalHeight := cellHeight(r.rowHeights, r.rowBorders, cell)
 
-		// Calculate content height (total height minus padding)
-		totalHeight := 0
-		for i := cell.r; i < cell.r+cell.rSpan; i++ {
-			totalHeight += r.rowHeights[i]
-		}
-		contentHeight := totalHeight - style.Padding.Top - style.Padding.Bottom
-
-		// Generate content lines with resolved alignment
-		contentLines := cell.Layout(contentWidth, contentHeight, style.HAlign, style.VAlign)
-		r.cellLayouts[cell.id] = contentLines
+		// Generate complete lines with padding
+		r.cellLayouts[cell.id] = cell.Layout(totalWidth, totalHeight, style)
 	}
 }
 
@@ -345,30 +413,12 @@ func (r *renderer) render() string {
 		return ""
 	}
 
+	lines := r.buildRenderLines()
+
 	var b strings.Builder
-
-	for row := range rows {
-		pr := prepareRow(
-			r.grid,
-			r.colWidths,
-			r.cellLayouts,
-			r.rowHeights,
-			row,
-			r.t.resolveStyle,
-		)
-
-		if pr.borderNeeded {
-			r.writeBorder(&b, pr.borderOps)
-		}
-
-		for _, lineOps := range pr.contentOps {
-			r.writeContent(&b, lineOps)
-		}
+	for _, lineOps := range lines {
+		r.writeLine(&b, lineOps)
 	}
-
-	// Bottom border
-	_, bottomOps := buildBorderOps(r.grid, r.colWidths, r.t.g.Rows())
-	r.writeBorder(&b, bottomOps)
 
 	return b.String()
 }

@@ -80,12 +80,13 @@ var doubleTemplate = charTemplate{
 // Select the default
 var defaultTemplate = thinTemplate
 
-// writeBorder interprets border instruction sequence using template.
-func (r *renderer) writeBorder(b *strings.Builder, ops []RenderOp) {
-	tpl := asciiTemplate
+// writeLine writes single line (border or content) using ops.
+func (r *renderer) writeLine(b *strings.Builder, ops []RenderOp) {
+	tpl := defaultTemplate
 
 	for _, op := range ops {
 		switch v := op.(type) {
+		// Border ops
 		case CornerTL:
 			b.WriteRune(tpl.cornerTL)
 		case CornerTR:
@@ -105,26 +106,17 @@ func (r *renderer) writeBorder(b *strings.Builder, ops []RenderOp) {
 		case CornerX:
 			b.WriteRune(tpl.cornerX)
 		case HLine:
-			for i := 0; i < v.Width; i++ {
+			for range v.Width {
 				b.WriteRune(tpl.hLine)
 			}
-		}
-	}
-	b.WriteByte('\n')
-}
 
-// writeContent interprets content instruction sequence using template.
-func (r *renderer) writeContent(b *strings.Builder, ops []RenderOp) {
-	tpl := defaultTemplate
-
-	for _, op := range ops {
-		switch v := op.(type) {
+		// Content ops
 		case VLine:
 			b.WriteRune(tpl.vLine)
 		case Content:
-			b.WriteString(v.Text) // just write finalized text
+			b.WriteString(v.Text)
 		case Space:
-			for i := 0; i < v.Width; i++ {
+			for range v.Width {
 				b.WriteByte(' ')
 			}
 		}

@@ -15,7 +15,48 @@ const (
 
 // Border specifies which edges of a cell should render borders.
 type Border struct {
-	Sides BorderSide
+	Sides    BorderSide // Which edges render visually (characters)
+	Physical BorderSide // Which edges occupy physical space
+}
+
+// HasTop reports whether top edge has visual or physical border.
+func (b Border) HasTop() bool {
+	return b.IsVisualTop() || (b.Physical&BorderTop) != 0
+}
+
+// HasBottom reports whether bottom edge has visual or physical border.
+func (b Border) HasBottom() bool {
+	return b.IsVisualBottom() || (b.Physical&BorderBottom) != 0
+}
+
+// HasLeft reports whether left edge has visual or physical border.
+func (b Border) HasLeft() bool {
+	return b.IsVisualLeft() || (b.Physical&BorderLeft) != 0
+}
+
+// HasRight reports whether right edge has visual or physical border.
+func (b Border) HasRight() bool {
+	return b.IsVisualRight() || (b.Physical&BorderRight) != 0
+}
+
+// IsVisualTop reports whether top edge renders as character.
+func (b Border) IsVisualTop() bool {
+	return (b.Sides & BorderTop) != 0
+}
+
+// IsVisualBottom reports whether bottom edge renders as character.
+func (b Border) IsVisualBottom() bool {
+	return (b.Sides & BorderBottom) != 0
+}
+
+// IsVisualLeft reports whether left edge renders as character.
+func (b Border) IsVisualLeft() bool {
+	return (b.Sides & BorderLeft) != 0
+}
+
+// IsVisualRight reports whether right edge renders as character.
+func (b Border) IsVisualRight() bool {
+	return (b.Sides & BorderRight) != 0
 }
 
 // HAlign specifies horizontal text alignment within a cell.
