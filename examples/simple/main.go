@@ -31,14 +31,15 @@ func main() {
 
 	// Row 0: Flex cells (will expand)
 	t.AddRow().
+		AddCell(tbl.Static, 2, 1, "tbl").
 		AddCell(tbl.Flex, 1, 1, "Name").
 		AddCell(tbl.Flex, 1, 1, "Role")
 
 	// Row 1: Static cells with different structure
 	t.AddRow().
 		AddCell(tbl.Static, 1, 1, "Alice").
+		AddCell(tbl.Static, 1, 1, "Farmer").
 		AddCell(tbl.Static, 1, 1, "Engineer").
-		AddCell(tbl.Static, 1, 1, "Berlin").
 		AddCell(tbl.Static, 1, 1, "Remote")
 
 	fmt.Println("Rendered table:")

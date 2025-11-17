@@ -1,0 +1,29 @@
+"naked":
+
+  tbl   Name               Role             
+        Alice   Engineer   Berlin   Remote  
+
+"all":
+
++-----+------------------+-----------------+
+|     │ Name             │ Role            │
++ tbl +-------+----------+--------+--------+
+|     │ Alice │ Engineer │ Berlin │ Remote │
++-----+-------+----------+--------+--------+
+
+
+"header":
+
++-----+------------------+-----------------+
+|     │ Name             │ Role            │
++ tbl +------------------+-----------------+
+|     │ Alice   Engineer   Berlin   Remote │
++-----+-------+----------+--------+--------+
+
+
+"no border":
+
+ tbl  Name             Role           
+      Alice  Engineer  Berlin  Remote 
+
+

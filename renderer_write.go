@@ -82,7 +82,7 @@ var defaultTemplate = thinTemplate
 
 // writeBorder interprets border instruction sequence using template.
 func (r *renderer) writeBorder(b *strings.Builder, ops []RenderOp) {
-	tpl := defaultTemplate
+	tpl := asciiTemplate
 
 	for _, op := range ops {
 		switch v := op.(type) {
