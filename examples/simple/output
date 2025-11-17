@@ -1,7 +1,9 @@
 "naked":
 
+
   tbl   Name               Role             
         Alice   Engineer   Berlin   Remote  
+
 
 "all":
 
@@ -27,3 +29,22 @@
       Alice  Engineer  Berlin  Remote 
 
 
+WORKING EXAMPLE:
+
+"all case"
++---+---+
+│   │ B │
+| A +---+
+│   │ C │
++---+---+
+
+"naked case"
+         
+      B  
+  A      
+      C  
+         
+
+"no borders case"
+ A  B 
+    C 

@@ -22,6 +22,10 @@ type Table struct {
 	colsFixed  bool
 	nextCellID ID
 
+	// Configuration
+	tableConfig TableConfig
+	colConfigs  map[int]ColConfig
+
 	// Style registry
 	defaultStyle CellStyle
 	columnStyles map[int]CellStyle
@@ -46,6 +50,10 @@ func NewWithCols(cols int) *Table {
 		row:        -1,
 		col:        0,
 		nextCellID: 1,
+
+		// Initialize configuration
+		tableConfig: TableConfig{},
+		colConfigs:  make(map[int]ColConfig),
 
 		// Initialize style registry
 		defaultStyle: CellStyle{
@@ -99,32 +107,6 @@ func (t *Table) RenderTo(w io.Writer) error {
 	s := newRenderer(t).render()
 	_, err := io.WriteString(w, s)
 	return err
-}
-
-// SetDefaultPadding updates table default padding.
-func (t *Table) SetDefaultPadding(p Padding) {
-	t.defaultStyle.Padding = p
-}
-
-// SetColumnPadding sets padding for column.
-func (t *Table) SetColumnPadding(col int, p Padding) {
-	cs := t.columnStyles[col]
-	cs.Padding = p
-	t.columnStyles[col] = cs
-}
-
-// SetRowPadding sets padding for row.
-func (t *Table) SetRowPadding(row int, p Padding) {
-	rs := t.rowStyles[row]
-	rs.Padding = p
-	t.rowStyles[row] = rs
-}
-
-// SetCellPadding sets padding for specific cell.
-func (t *Table) SetCellPadding(id ID, p Padding) {
-	cs := t.cellStyles[id]
-	cs.Padding = p
-	t.cellStyles[id] = cs
 }
 
 // PrintDebug renders table structure in TBL Grid Notation format.
