@@ -14,19 +14,18 @@ type renderer struct {
 	colBorders    []bool // Physical column border presence
 	rowBorders    []bool // Physical row border presence
 	grid          [][]*Cell
-	cellLayouts   map[ID][]string // pre-computed content lines per cell
+	cellLayouts   map[ID][]string  // pre-computed content lines per cell
+	styles        map[ID]CellStyle // cached resolved styles
 }
 
 // newRenderer constructs a renderer for the given table.
 // Builds grid structure, calculates dimensions, and pre-computes cell layouts.
 //
-// Calculation order:
-//  1. Build grid and track max padding per column
-//  2. Calculate natural column widths with constraints
-//  3. Update border presence (colBorders, rowBorders)
-//  4. Enforce global table width constraint
-//  5. Calculate row heights with final column widths
-//  6. Generate cell layouts
+// Pipeline:
+//  1. Single pass: cache styles, build grid, track dimensions and borders
+//  2. Enforce global table width constraint
+//  3. Calculate row heights with finalized column widths
+//  4. Generate cell layouts
 func newRenderer(t *Table) *renderer {
 	if !t.g.B.All() {
 		panic("tbl: incomplete table")
@@ -44,6 +43,7 @@ func newRenderer(t *Table) *renderer {
 		rowBorders:    make([]bool, rows+1),
 		grid:          make([][]*Cell, rows),
 		cellLayouts:   make(map[ID][]string),
+		styles:        make(map[ID]CellStyle),
 	}
 
 	// Initialize grid rows
@@ -51,36 +51,18 @@ func newRenderer(t *Table) *renderer {
 		r.grid[i] = make([]*Cell, cols)
 	}
 
-	// Pass 1: Grid population, padding tracking, width calculation, and border tracking
+	// Single pass: Cache styles and track dimensions
 	for _, cell := range t.cells {
-		// Resolve style once per cell
-		style := t.resolveStyle(cell)
-
-		// Populate grid
-		for rr := cell.r; rr < cell.r+cell.rSpan; rr++ {
-			for cc := cell.c; cc < cell.c+cell.cSpan; cc++ {
-				r.grid[rr][cc] = cell
-			}
-		}
-
-		// Track max padding for origin column only
-		r.updateColMaxPadding(cell, style)
-
-		// Update column widths
-		r.updateColWidths(cell, style)
-
-		// Update border presence
-		r.updateBorders(cell, style)
+		r.cacheStyle(cell)
+		r.populateGrid(cell)
+		r.trackDimensions(cell)
 	}
 
 	// Enforce global table width constraint
 	r.enforceTableMaxWidth()
 
-	// Pass 2: Height calculation with final column widths
-	for _, cell := range t.cells {
-		style := t.resolveStyle(cell)
-		r.updateRowHeights(cell, style)
-	}
+	// Calculate heights with finalized column widths
+	r.calculateHeights()
 
 	// Generate layouts with finalized dimensions
 	r.buildCellLayouts()
@@ -88,8 +70,30 @@ func newRenderer(t *Table) *renderer {
 	return r
 }
 
+// cacheStyle resolves and stores cell style.
+func (r *renderer) cacheStyle(cell *Cell) {
+	r.styles[cell.id] = r.t.resolveStyle(cell)
+}
+
+// populateGrid fills grid positions for cell.
+func (r *renderer) populateGrid(cell *Cell) {
+	for rr := cell.r; rr < cell.r+cell.rSpan; rr++ {
+		for cc := cell.c; cc < cell.c+cell.cSpan; cc++ {
+			r.grid[rr][cc] = cell
+		}
+	}
+}
+
+// trackDimensions calculates widths, padding, and borders in one pass.
+func (r *renderer) trackDimensions(cell *Cell) {
+	r.updateColMaxPadding(cell)
+	r.updateColWidths(cell)
+	r.updateBorders(cell)
+}
+
 // updateColMaxPadding tracks maximum padding for origin column only.
-func (r *renderer) updateColMaxPadding(cell *Cell, style CellStyle) {
+func (r *renderer) updateColMaxPadding(cell *Cell) {
+	style := r.styles[cell.id]
 	padding := style.Padding.Left + style.Padding.Right
 
 	if padding > r.colMaxPadding[cell.c] {
@@ -100,7 +104,8 @@ func (r *renderer) updateColMaxPadding(cell *Cell, style CellStyle) {
 // updateColWidths updates column widths for cell.
 // Applies ColConfig constraints after natural calculation.
 // Handles both single-column (span=1) and multi-column (span>1) cells.
-func (r *renderer) updateColWidths(cell *Cell, style CellStyle) {
+func (r *renderer) updateColWidths(cell *Cell) {
+	style := r.styles[cell.id]
 	contentWidth := cell.Width()
 	required := contentWidth + style.Padding.Left + style.Padding.Right
 
@@ -161,30 +166,41 @@ func (r *renderer) applyColConstraints(width int, cfg ColConfig) int {
 
 // updateBorders marks border presence based on cell style.
 // Border exists if Sides requests visual OR Physical requests space.
-func (r *renderer) updateBorders(cell *Cell, style CellStyle) {
-	if style.Border.HasTop() {
+func (r *renderer) updateBorders(cell *Cell) {
+	style := r.styles[cell.id]
+
+	if style.Border.Has(BorderTop) {
 		r.rowBorders[cell.r] = true
 	}
 
-	if style.Border.HasBottom() {
+	if style.Border.Has(BorderBottom) {
 		r.rowBorders[cell.r+cell.rSpan] = true
 	}
 
-	if style.Border.HasLeft() {
+	if style.Border.Has(BorderLeft) {
 		r.colBorders[cell.c] = true
 	}
 
-	if style.Border.HasRight() {
+	if style.Border.Has(BorderRight) {
 		r.colBorders[cell.c+cell.cSpan] = true
+	}
+}
+
+// calculateHeights processes all cells with finalized column widths.
+func (r *renderer) calculateHeights() {
+	for _, cell := range r.t.cells {
+		r.updateRowHeights(cell)
 	}
 }
 
 // updateRowHeights calculates and updates row heights for cell.
 // Uses final column widths to determine content wrapping.
 // Handles both single-row (span=1) and multi-row (span>1) cells.
-func (r *renderer) updateRowHeights(cell *Cell, style CellStyle) {
+func (r *renderer) updateRowHeights(cell *Cell) {
+	style := r.styles[cell.id]
+
 	// Calculate final width for this cell
-	totalWidth := cellWidth(r.colWidths, r.colBorders, cell)
+	totalWidth := r.cellWidth(cell)
 	contentWidth := totalWidth - style.Padding.Left - style.Padding.Right
 
 	// Rebuild content lines with final width constraint
@@ -351,18 +367,18 @@ func (r *renderer) enforceTableMaxWidth() {
 
 // cellWidth calculates total layout width for cell spanning multiple columns.
 // Accounts for physical borders that are removed within cell span.
-func cellWidth(colWidths []int, colBorders []bool, cell *Cell) int {
+func (r *renderer) cellWidth(cell *Cell) int {
 	width := 0
 
 	// Sum column widths
 	for i := range cell.cSpan {
-		width += colWidths[cell.c+i]
+		width += r.colWidths[cell.c+i]
 	}
 
 	// Add space from removed internal vertical borders
 	// Check borders between columns within cell span
 	for i := 1; i < cell.cSpan; i++ {
-		if colBorders[cell.c+i] {
+		if r.colBorders[cell.c+i] {
 			width++ // Border column removed, add its width
 		}
 	}
@@ -372,18 +388,18 @@ func cellWidth(colWidths []int, colBorders []bool, cell *Cell) int {
 
 // cellHeight calculates total layout height for cell spanning multiple rows.
 // Accounts for physical borders that are removed within cell span.
-func cellHeight(rowHeights []int, rowBorders []bool, cell *Cell) int {
+func (r *renderer) cellHeight(cell *Cell) int {
 	height := 0
 
 	// Sum row heights
 	for i := range cell.rSpan {
-		height += rowHeights[cell.r+i]
+		height += r.rowHeights[cell.r+i]
 	}
 
 	// Add space from removed internal horizontal borders
 	// Check borders between rows within cell span
 	for i := 1; i < cell.rSpan; i++ {
-		if rowBorders[cell.r+i] {
+		if r.rowBorders[cell.r+i] {
 			height++ // Border line removed, add its height
 		}
 	}
@@ -395,11 +411,11 @@ func cellHeight(rowHeights []int, rowBorders []bool, cell *Cell) int {
 // Content includes padding, horizontal and vertical alignment - ready to render.
 func (r *renderer) buildCellLayouts() {
 	for _, cell := range r.t.cells {
-		style := r.t.resolveStyle(cell)
+		style := r.styles[cell.id]
 
 		// Calculate total dimensions (including padding)
-		totalWidth := cellWidth(r.colWidths, r.colBorders, cell)
-		totalHeight := cellHeight(r.rowHeights, r.rowBorders, cell)
+		totalWidth := r.cellWidth(cell)
+		totalHeight := r.cellHeight(cell)
 
 		// Generate complete lines with padding
 		r.cellLayouts[cell.id] = cell.Layout(totalWidth, totalHeight, style)

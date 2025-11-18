@@ -48,10 +48,10 @@ func (r *renderer) buildLinesForRow(row int) [][]RenderOp {
 	for lineIdx := range lineCount {
 		if r.colBorders[len(r.colWidths)] {
 			if lineIdx == 0 && hasTopBorder {
-				junction := selectJunction(r.grid, row, len(r.colWidths), r.t.resolveStyle)
+				junction := r.selectJunction(row, len(r.colWidths))
 				lines[lineIdx] = append(lines[lineIdx], junction)
 			} else {
-				if leftBorderAt(r.grid, row, len(r.colWidths), r.t.resolveStyle) {
+				if r.leftBorderAt(row, len(r.colWidths)) {
 					lines[lineIdx] = append(lines[lineIdx], VLine{})
 				} else {
 					lines[lineIdx] = append(lines[lineIdx], Space{Width: 1})
@@ -66,7 +66,7 @@ func (r *renderer) buildLinesForRow(row int) [][]RenderOp {
 // buildCellSegments creates RenderOps for cell across all lines in row.
 // Returns slice where each element is RenderOps for one line.
 func (r *renderer) buildCellSegments(cell *Cell, row, lineCount int, hasTopBorder bool) [][]RenderOp {
-	style := r.t.resolveStyle(cell)
+	style := r.styles[cell.id]
 	col := cell.c
 
 	hasLeftBorder := r.colBorders[col]
@@ -91,10 +91,10 @@ func (r *renderer) buildCellSegments(cell *Cell, row, lineCount int, hasTopBorde
 		// Left border/junction
 		if hasLeftBorder {
 			if lineInRow == 0 && hasTopBorder {
-				junction := selectJunction(r.grid, row, col, r.t.resolveStyle)
+				junction := r.selectJunction(row, col)
 				ops = append(ops, junction)
 			} else {
-				if leftBorderAt(r.grid, row, col, r.t.resolveStyle) {
+				if r.leftBorderAt(row, col) {
 					ops = append(ops, VLine{})
 				} else {
 					ops = append(ops, Space{Width: 1})
@@ -105,8 +105,8 @@ func (r *renderer) buildCellSegments(cell *Cell, row, lineCount int, hasTopBorde
 		// Cell content or top border
 		if lineInRow == 0 && hasTopBorder && isCellOriginRow {
 			// Top border
-			totalWidth := cellWidth(r.colWidths, r.colBorders, cell)
-			if style.Border.IsVisualTop() {
+			totalWidth := r.cellWidth(cell)
+			if style.Border.IsVisual(BorderTop) {
 				ops = append(ops, HLine{Width: totalWidth})
 			} else {
 				ops = append(ops, Space{Width: totalWidth})
@@ -126,7 +126,7 @@ func (r *renderer) buildCellSegments(cell *Cell, row, lineCount int, hasTopBorde
 				text = cellLines[cellLineIdx]
 			} else {
 				// Beyond cell height
-				totalWidth := cellWidth(r.colWidths, r.colBorders, cell)
+				totalWidth := r.cellWidth(cell)
 				text = strings.Repeat(" ", totalWidth)
 			}
 
@@ -141,9 +141,9 @@ func (r *renderer) buildCellSegments(cell *Cell, row, lineCount int, hasTopBorde
 
 // topBorderAt reports whether horizontal border renders as character at position (row, col).
 // Checks cells that meet at this position.
-func topBorderAt(grid [][]*Cell, row, col int, resolveStyle func(*Cell) CellStyle) bool {
-	rows := len(grid)
-	cols := len(grid[0])
+func (r *renderer) topBorderAt(row, col int) bool {
+	rows := len(r.grid)
+	cols := len(r.grid[0])
 
 	// Out of bounds
 	if row < 0 || row > rows || col < 0 || col >= cols {
@@ -152,39 +152,30 @@ func topBorderAt(grid [][]*Cell, row, col int, resolveStyle func(*Cell) CellStyl
 
 	// Top edge of grid
 	if row == 0 {
-		cell := grid[0][col]
+		cell := r.grid[0][col]
 		if cell != nil {
-			style := resolveStyle(cell)
-			return style.Border.IsVisualTop()
+			style := r.styles[cell.id]
+			return style.Border.IsVisual(BorderTop)
 		}
 		return false
 	}
 
 	// Bottom edge of grid
 	if row == rows {
-		cell := grid[rows-1][col]
+		cell := r.grid[rows-1][col]
 		if cell != nil {
-			style := resolveStyle(cell)
-			return style.Border.IsVisualBottom()
+			style := r.styles[cell.id]
+			return style.Border.IsVisual(BorderBottom)
 		}
 		return false
 	}
 
 	// Between rows: check both cells
-	cellAbove := grid[row-1][col]
-	cellBelow := grid[row][col]
+	cellAbove := r.grid[row-1][col]
+	cellBelow := r.grid[row][col]
 
-	if cellAbove != nil {
-		style := resolveStyle(cellAbove)
-		if style.Border.IsVisualBottom() {
-			return true
-		}
-	}
-	if cellBelow != nil {
-		style := resolveStyle(cellBelow)
-		if style.Border.IsVisualTop() {
-			return true
-		}
+	if r.styles[cellAbove.id].Border.IsVisual(BorderBottom) || r.styles[cellBelow.id].Border.IsVisual(BorderTop) {
+		return true
 	}
 
 	return false
@@ -192,9 +183,9 @@ func topBorderAt(grid [][]*Cell, row, col int, resolveStyle func(*Cell) CellStyl
 
 // leftBorderAt reports whether vertical border renders as character at position (row, col).
 // Checks cells that meet at this position.
-func leftBorderAt(grid [][]*Cell, row, col int, resolveStyle func(*Cell) CellStyle) bool {
-	rows := len(grid)
-	cols := len(grid[0])
+func (r *renderer) leftBorderAt(row, col int) bool {
+	rows := len(r.grid)
+	cols := len(r.grid[0])
 
 	// Out of bounds
 	if row < 0 || row >= rows || col < 0 || col > cols {
@@ -203,39 +194,30 @@ func leftBorderAt(grid [][]*Cell, row, col int, resolveStyle func(*Cell) CellSty
 
 	// Left edge of grid
 	if col == 0 {
-		cell := grid[row][0]
+		cell := r.grid[row][0]
 		if cell != nil {
-			style := resolveStyle(cell)
-			return style.Border.IsVisualLeft()
+			style := r.styles[cell.id]
+			return style.Border.IsVisual(BorderLeft)
 		}
 		return false
 	}
 
 	// Right edge of grid
 	if col == cols {
-		cell := grid[row][cols-1]
+		cell := r.grid[row][cols-1]
 		if cell != nil {
-			style := resolveStyle(cell)
-			return style.Border.IsVisualRight()
+			style := r.styles[cell.id]
+			return style.Border.IsVisual(BorderRight)
 		}
 		return false
 	}
 
 	// Between columns: check both cells
-	cellLeft := grid[row][col-1]
-	cellRight := grid[row][col]
+	cellLeft := r.grid[row][col-1]
+	cellRight := r.grid[row][col]
 
-	if cellLeft != nil {
-		style := resolveStyle(cellLeft)
-		if style.Border.IsVisualRight() {
-			return true
-		}
-	}
-	if cellRight != nil {
-		style := resolveStyle(cellRight)
-		if style.Border.IsVisualLeft() {
-			return true
-		}
+	if r.styles[cellLeft.id].Border.IsVisual(BorderRight) || r.styles[cellRight.id].Border.IsVisual(BorderLeft) {
+		return true
 	}
 
 	return false
@@ -251,9 +233,9 @@ func leftBorderAt(grid [][]*Cell, row, col int, resolveStyle func(*Cell) CellSty
 //   - resolveStyle: function to resolve cell style
 //
 // Returns appropriate junction RenderOp based on border directions.
-func selectJunction(grid [][]*Cell, row, col int, resolveStyle func(*Cell) CellStyle) RenderOp {
-	rows := len(grid)
-	cols := len(grid[0])
+func (r *renderer) selectJunction(row, col int) RenderOp {
+	rows := len(r.grid)
+	cols := len(r.grid[0])
 
 	// Corners
 	if row == 0 && col == 0 {
@@ -270,10 +252,10 @@ func selectJunction(grid [][]*Cell, row, col int, resolveStyle func(*Cell) CellS
 	}
 
 	// Calculate all 4 boundaries meeting at junction
-	top := leftBorderAt(grid, row-1, col, resolveStyle)
-	right := topBorderAt(grid, row, col, resolveStyle)
-	bottom := leftBorderAt(grid, row, col, resolveStyle)
-	left := topBorderAt(grid, row, col-1, resolveStyle)
+	top := r.leftBorderAt(row-1, col)
+	right := r.topBorderAt(row, col)
+	bottom := r.leftBorderAt(row, col)
+	left := r.topBorderAt(row, col-1)
 
 	// HLine (horizontal continuation)
 	if !top && right && !bottom && left {
