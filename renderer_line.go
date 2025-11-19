@@ -1,152 +1,204 @@
 package tbl
 
-import "strings"
-
 // buildRenderLines constructs all rendering lines for the table.
 // Returns complete line sequence as [][]RenderOp.
 func (r *renderer) buildRenderLines() [][]RenderOp {
 	var lines [][]RenderOp
 
-	for row := range len(r.rowHeights) {
+	for row := range r.rowCount() {
 		rowLines := r.buildLinesForRow(row)
 		lines = append(lines, rowLines...)
+	}
+
+	// Add final bottom boundary if present
+	if r.hBoundaries[r.rowCount()] {
+		bottomLine := r.buildBoundaryLine(r.rowCount())
+		lines = append(lines, bottomLine)
 	}
 
 	return lines
 }
 
 // buildLinesForRow constructs all lines for a single row.
-// Processes each cell once and populates all lines simultaneously.
+// Combines boundary line (if present) with content lines.
 func (r *renderer) buildLinesForRow(row int) [][]RenderOp {
-	lineCount := r.rowHeights[row]
-	hasTopBorder := r.rowBorders[row]
+	hasHBoundary := r.hBoundaries[row]
 
+	var lines [][]RenderOp
+
+	// Add boundary line if present
+	if hasHBoundary {
+		boundaryLine := r.buildBoundaryLine(row)
+		lines = append(lines, boundaryLine)
+	}
+
+	// Add content lines
+	contentLines := r.buildContentLines(row)
+	lines = append(lines, contentLines...)
+
+	return lines
+}
+
+// cellOffset calculates layout line index for cell at given row position.
+// Returns index to the first line at row position in cell's layout.
+// Includes all previous rows' content lines and boundary lines between them.
+//
+// Note: Does not include boundary line at row position itself.
+// Caller must adjust offset if boundary exists at current row.
+func (r *renderer) cellOffset(cell *Cell, row int) int {
+	offset := 0
+	for i := cell.r; i < row; i++ {
+		offset += r.rowHeights[i]
+		if i > cell.r && r.hBoundaries[i] {
+			offset++
+		}
+	}
+	return offset
+}
+
+// buildBoundarySegment constructs segment for single column in boundary line.
+// Handles both normal cells (starting at row) and spanning cells (cutting through).
+//
+// Returns:
+//   - RenderOp for this segment
+//   - colsToSkip: number of columns to skip (1 for normal, cell.cSpan for spanning)
+func (r *renderer) buildBoundarySegment(row, col int) (RenderOp, int) {
+	// Bottom boundary: no spanning cells possible
+	if row == r.rowCount() {
+		op := RenderOp(Space{Width: r.colWidths[col]})
+		if r.hBorderAt(row, col) {
+			op = HLine{Width: r.colWidths[col]}
+		}
+		return op, 1
+	}
+
+	cell := r.grid[row][col]
+
+	// Spanning cell: return content
+	if cell.r < row {
+		content := r.cellLayouts[cell.id]
+		offset := r.cellOffset(cell, row)
+		op := Content{Text: content[offset]}
+		return op, cell.cSpan
+	}
+
+	// Normal cell: return horizontal segment
+	op := RenderOp(Space{Width: r.colWidths[col]})
+	if r.hBorderAt(row, col) {
+		op = HLine{Width: r.colWidths[col]}
+	}
+	return op, 1
+}
+
+// buildBoundaryLine constructs horizontal boundary line at row position.
+//
+// Boundary semantics: row N = boundary before row N (top of row N).
+// Special case: row = rowCount() constructs table's bottom boundary.
+//
+// Only called when r.hBoundaries[row] is true.
+//
+// Handles mixed content: cells with rowSpan > 1 show content on boundary line,
+// while cells starting at this row show horizontal border segments.
+//
+// Returns complete boundary line as []RenderOp sequence.
+func (r *renderer) buildBoundaryLine(row int) []RenderOp {
+	var op RenderOp
+	var ops []RenderOp
+
+	for col := 0; col < r.colCount(); {
+		// Add junction if vertical boundary exists
+		if r.vBoundaries[col] {
+			op = r.selectJunction(row, col)
+			ops = append(ops, op)
+		}
+
+		// Build segment and get columns to skip
+		segment, skip := r.buildBoundarySegment(row, col)
+		ops = append(ops, segment)
+		col += skip
+	}
+
+	// Add rightmost junction if boundary exists
+	if r.vBoundaries[r.colCount()] {
+		op = r.selectJunction(row, r.colCount())
+		ops = append(ops, op)
+	}
+
+	return ops
+}
+
+// buildContentLines constructs all content lines for a row.
+// Content lines are lines containing cell content (no horizontal boundary).
+//
+// Processes all cells once, building vertical borders and content
+// for each line in parallel.
+//
+// Parameters:
+//
+//	row: grid row position
+//
+// Returns all content lines as [][]RenderOp.
+func (r *renderer) buildContentLines(row int) [][]RenderOp {
+	lineCount := r.rowHeights[row]
 	lines := make([][]RenderOp, lineCount)
 	for i := range lines {
 		lines[i] = make([]RenderOp, 0)
 	}
 
+	var op RenderOp // reused throughout
+
 	// Process each cell in the row
-	for col := 0; col < len(r.colWidths); {
+	for col := 0; col < r.colCount(); {
 		cell := r.grid[row][col]
+		content := r.cellLayouts[cell.id]
 
-		if cell != nil && cell.c == col {
-			cellOps := r.buildCellSegments(cell, row, lineCount, hasTopBorder)
+		// Calculate content offset for spanning cells
+		offset := r.cellOffset(cell, row)
 
-			// Append cell ops to each line
-			for lineIdx := range lineCount {
-				lines[lineIdx] = append(lines[lineIdx], cellOps[lineIdx]...)
-			}
-
-			col += cell.cSpan
-		} else {
-			col++
+		// Adjust offset only for spanning cells with boundary at current row
+		if cell.r < row && r.hBoundaries[row] {
+			offset++
 		}
-	}
 
-	// Add right edge to all lines
-	for lineIdx := range lineCount {
-		if r.colBorders[len(r.colWidths)] {
-			if lineIdx == 0 && hasTopBorder {
-				junction := r.selectJunction(row, len(r.colWidths))
-				lines[lineIdx] = append(lines[lineIdx], junction)
-			} else {
-				if r.leftBorderAt(row, len(r.colWidths)) {
-					lines[lineIdx] = append(lines[lineIdx], VLine{})
-				} else {
-					lines[lineIdx] = append(lines[lineIdx], Space{Width: 1})
-				}
+		// Add left vertical boundary to all lines
+		if r.vBoundaries[col] {
+			op = Space{Width: 1}
+			if r.vBorderAt(row, col) {
+				op = VLine{}
+			}
+			for i := 0; i < lineCount; i++ {
+				lines[i] = append(lines[i], op)
 			}
 		}
+
+		// Add cell content to all lines
+		for i := 0; i < lineCount; i++ {
+			op = Content{Text: content[offset+i]}
+			lines[i] = append(lines[i], op)
+		}
+
+		// Add right boundary on last cell
+		if r.lastCellInRow(cell) && r.vBoundaries[r.colCount()] {
+			op = Space{Width: 1}
+			if r.vBorderAt(row, r.colCount()) {
+				op = VLine{}
+			}
+			for i := 0; i < lineCount; i++ {
+				lines[i] = append(lines[i], op)
+			}
+		}
+
+		col += cell.cSpan
 	}
 
 	return lines
 }
 
-// buildCellSegments creates RenderOps for cell across all lines in row.
-// Returns slice where each element is RenderOps for one line.
-func (r *renderer) buildCellSegments(cell *Cell, row, lineCount int, hasTopBorder bool) [][]RenderOp {
-	style := r.styles[cell.id]
-	col := cell.c
-
-	hasLeftBorder := r.colBorders[col]
-	isCellOriginRow := (cell.r == row)
-
-	// Calculate line offset for multi-row cells
-	lineOffset := 0
-	if cell.r < row {
-		for rr := cell.r; rr < row; rr++ {
-			lineOffset += r.rowHeights[rr]
-		}
-	}
-
-	// Get complete cell layout (with padding already applied)
-	cellLines := r.cellLayouts[cell.id]
-
-	segments := make([][]RenderOp, lineCount)
-
-	for lineInRow := range lineCount {
-		var ops []RenderOp
-
-		// Left border/junction
-		if hasLeftBorder {
-			if lineInRow == 0 && hasTopBorder {
-				junction := r.selectJunction(row, col)
-				ops = append(ops, junction)
-			} else {
-				if r.leftBorderAt(row, col) {
-					ops = append(ops, VLine{})
-				} else {
-					ops = append(ops, Space{Width: 1})
-				}
-			}
-		}
-
-		// Cell content or top border
-		if lineInRow == 0 && hasTopBorder && isCellOriginRow {
-			// Top border
-			totalWidth := r.cellWidth(cell)
-			if style.Border.IsVisual(BorderTop) {
-				ops = append(ops, HLine{Width: totalWidth})
-			} else {
-				ops = append(ops, Space{Width: totalWidth})
-			}
-		} else {
-			// Cell content - directly from cellLayouts
-			cellLineIdx := lineOffset + lineInRow
-
-			// Adjust if top border consumed line 0
-			if hasTopBorder && isCellOriginRow && lineInRow > 0 {
-				cellLineIdx = lineOffset + lineInRow - 1
-			}
-
-			// Get text from pre-computed layout
-			var text string
-			if cellLineIdx < len(cellLines) {
-				text = cellLines[cellLineIdx]
-			} else {
-				// Beyond cell height
-				totalWidth := r.cellWidth(cell)
-				text = strings.Repeat(" ", totalWidth)
-			}
-
-			ops = append(ops, Content{Text: text})
-		}
-
-		segments[lineInRow] = ops
-	}
-
-	return segments
-}
-
-// topBorderAt reports whether horizontal border renders as character at position (row, col).
+// hBorderAt reports whether horizontal border renders as character at position (row, col).
 // Checks cells that meet at this position.
-func (r *renderer) topBorderAt(row, col int) bool {
-	rows := len(r.grid)
-	cols := len(r.grid[0])
-
+func (r *renderer) hBorderAt(row, col int) bool {
 	// Out of bounds
-	if row < 0 || row > rows || col < 0 || col >= cols {
+	if row < 0 || row > r.rowCount() || col < 0 || col >= r.colCount() {
 		return false
 	}
 
@@ -161,8 +213,8 @@ func (r *renderer) topBorderAt(row, col int) bool {
 	}
 
 	// Bottom edge of grid
-	if row == rows {
-		cell := r.grid[rows-1][col]
+	if row == r.rowCount() {
+		cell := r.grid[r.rowCount()-1][col]
 		if cell != nil {
 			style := r.styles[cell.id]
 			return style.Border.IsVisual(BorderBottom)
@@ -174,6 +226,10 @@ func (r *renderer) topBorderAt(row, col int) bool {
 	cellAbove := r.grid[row-1][col]
 	cellBelow := r.grid[row][col]
 
+	if cellAbove == cellBelow { // cell with rowSpan > 1
+		return false
+	}
+
 	if r.styles[cellAbove.id].Border.IsVisual(BorderBottom) || r.styles[cellBelow.id].Border.IsVisual(BorderTop) {
 		return true
 	}
@@ -181,14 +237,11 @@ func (r *renderer) topBorderAt(row, col int) bool {
 	return false
 }
 
-// leftBorderAt reports whether vertical border renders as character at position (row, col).
+// vBorderAt reports whether vertical border renders as character at position (row, col).
 // Checks cells that meet at this position.
-func (r *renderer) leftBorderAt(row, col int) bool {
-	rows := len(r.grid)
-	cols := len(r.grid[0])
-
+func (r *renderer) vBorderAt(row, col int) bool {
 	// Out of bounds
-	if row < 0 || row >= rows || col < 0 || col > cols {
+	if row < 0 || row >= r.rowCount() || col < 0 || col > r.colCount() {
 		return false
 	}
 
@@ -203,8 +256,8 @@ func (r *renderer) leftBorderAt(row, col int) bool {
 	}
 
 	// Right edge of grid
-	if col == cols {
-		cell := r.grid[row][cols-1]
+	if col == r.colCount() {
+		cell := r.grid[row][r.colCount()-1]
 		if cell != nil {
 			style := r.styles[cell.id]
 			return style.Border.IsVisual(BorderRight)
@@ -215,6 +268,10 @@ func (r *renderer) leftBorderAt(row, col int) bool {
 	// Between columns: check both cells
 	cellLeft := r.grid[row][col-1]
 	cellRight := r.grid[row][col]
+
+	if cellLeft == cellRight { // cell with colSpan > 1
+		return false
+	}
 
 	if r.styles[cellLeft.id].Border.IsVisual(BorderRight) || r.styles[cellRight.id].Border.IsVisual(BorderLeft) {
 		return true
@@ -234,28 +291,25 @@ func (r *renderer) leftBorderAt(row, col int) bool {
 //
 // Returns appropriate junction RenderOp based on border directions.
 func (r *renderer) selectJunction(row, col int) RenderOp {
-	rows := len(r.grid)
-	cols := len(r.grid[0])
-
 	// Corners
 	if row == 0 && col == 0 {
-		return CornerTL{} // ┌
+		return CornerTL{} // â"Œ
 	}
-	if row == 0 && col == cols {
-		return CornerTR{} // ┐
+	if row == 0 && col == r.colCount() {
+		return CornerTR{} // â"
 	}
-	if row == rows && col == 0 {
-		return CornerBL{} // └
+	if row == r.rowCount() && col == 0 {
+		return CornerBL{} // â""
 	}
-	if row == rows && col == cols {
-		return CornerBR{} // ┘
+	if row == r.rowCount() && col == r.colCount() {
+		return CornerBR{} // â"˜
 	}
 
 	// Calculate all 4 boundaries meeting at junction
-	top := r.leftBorderAt(row-1, col)
-	right := r.topBorderAt(row, col)
-	bottom := r.leftBorderAt(row, col)
-	left := r.topBorderAt(row, col-1)
+	top := r.vBorderAt(row-1, col)
+	right := r.hBorderAt(row, col)
+	bottom := r.vBorderAt(row, col)
+	left := r.hBorderAt(row, col-1)
 
 	// HLine (horizontal continuation)
 	if !top && right && !bottom && left {
@@ -269,21 +323,21 @@ func (r *renderer) selectJunction(row, col int) RenderOp {
 
 	// T-junctions
 	if !top && right && bottom && left {
-		return CornerT{} // ┬
+		return CornerT{} // â"¬
 	}
 	if top && right && !bottom && left {
-		return CornerB{} // ┴
+		return CornerB{} // â"´
 	}
 	if top && right && bottom && !left {
-		return CornerL{} // ├
+		return CornerL{} // â"œ
 	}
 	if top && !right && bottom && left {
-		return CornerR{} // ┤
+		return CornerR{} // â"¤
 	}
 
 	// Cross junction
 	if top && right && bottom && left {
-		return CornerX{} // ┼
+		return CornerX{} // â"¼
 	}
 
 	// No border at this junction

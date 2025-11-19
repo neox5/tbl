@@ -42,6 +42,12 @@ func main() {
 		AddCell(tbl.Static, 1, 1, "Engineer").
 		AddCell(tbl.Static, 1, 1, "Remote")
 
+	// Row 2: Full span summary cells
+	t.AddRow().
+		AddCell(tbl.Static, 1, 5, "Summary")
+
+	t.BorderAll()
+
 	fmt.Println("Rendered table:")
 	fmt.Println(t.Render())
 	fmt.Println()

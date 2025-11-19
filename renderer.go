@@ -8,14 +8,32 @@ import (
 // renderer holds everything needed to produce the final ASCII table.
 type renderer struct {
 	t             *Table
+	styles        map[ID]CellStyle // cached resolved styles
+	grid          [][]*Cell
 	colMaxPadding []int
 	colWidths     []int
 	rowHeights    []int
-	colBorders    []bool // Physical column border presence
-	rowBorders    []bool // Physical row border presence
-	grid          [][]*Cell
-	cellLayouts   map[ID][]string  // pre-computed content lines per cell
-	styles        map[ID]CellStyle // cached resolved styles
+	vBoundaries   []bool          // vertical boundary presence (was: colBorders)
+	hBoundaries   []bool          // horizontal boundary presence (was: rowBorders)
+	cellLayouts   map[ID][]string // pre-computed content lines per cell
+}
+
+// rowCount returns total number of rows in grid.
+func (r *renderer) rowCount() int {
+	return len(r.grid)
+}
+
+// colCount returns total number of columns in grid.
+func (r *renderer) colCount() int {
+	if len(r.grid) == 0 {
+		return 0
+	}
+	return len(r.grid[0])
+}
+
+// lastCellInRow returns true if the cell is positioned at the end of the row.
+func (r *renderer) lastCellInRow(cell *Cell) bool {
+	return cell.c+cell.cSpan == r.colCount()
 }
 
 // newRenderer constructs a renderer for the given table.
@@ -31,24 +49,21 @@ func newRenderer(t *Table) *renderer {
 		panic("tbl: incomplete table")
 	}
 
-	rows := t.g.Rows()
-	cols := t.g.Cols()
-
 	r := &renderer{
 		t:             t,
-		colMaxPadding: make([]int, cols),
-		colWidths:     make([]int, cols),
-		rowHeights:    make([]int, rows),
-		colBorders:    make([]bool, cols+1),
-		rowBorders:    make([]bool, rows+1),
-		grid:          make([][]*Cell, rows),
-		cellLayouts:   make(map[ID][]string),
 		styles:        make(map[ID]CellStyle),
+		grid:          make([][]*Cell, t.g.Rows()),
+		colMaxPadding: make([]int, t.g.Cols()),
+		colWidths:     make([]int, t.g.Cols()),
+		rowHeights:    make([]int, t.g.Rows()),
+		vBoundaries:   make([]bool, t.g.Cols()+1),
+		hBoundaries:   make([]bool, t.g.Rows()+1),
+		cellLayouts:   make(map[ID][]string),
 	}
 
 	// Initialize grid rows
 	for i := range r.grid {
-		r.grid[i] = make([]*Cell, cols)
+		r.grid[i] = make([]*Cell, t.g.Cols())
 	}
 
 	// Single pass: Cache styles and track dimensions
@@ -164,25 +179,25 @@ func (r *renderer) applyColConstraints(width int, cfg ColConfig) int {
 	return width
 }
 
-// updateBorders marks border presence based on cell style.
-// Border exists if Sides requests visual OR Physical requests space.
+// updateBorders marks boundary existence based on cell style.
+// Boundary exists if Sides requests visual OR Physical requests space.
 func (r *renderer) updateBorders(cell *Cell) {
 	style := r.styles[cell.id]
 
 	if style.Border.Has(BorderTop) {
-		r.rowBorders[cell.r] = true
+		r.hBoundaries[cell.r] = true
 	}
 
 	if style.Border.Has(BorderBottom) {
-		r.rowBorders[cell.r+cell.rSpan] = true
+		r.hBoundaries[cell.r+cell.rSpan] = true
 	}
 
 	if style.Border.Has(BorderLeft) {
-		r.colBorders[cell.c] = true
+		r.vBoundaries[cell.c] = true
 	}
 
 	if style.Border.Has(BorderRight) {
-		r.colBorders[cell.c+cell.cSpan] = true
+		r.vBoundaries[cell.c+cell.cSpan] = true
 	}
 }
 
@@ -279,7 +294,7 @@ func (r *renderer) enforceTableMaxWidth() {
 
 	// Calculate physical border count
 	borderCount := 0
-	for _, exists := range r.colBorders {
+	for _, exists := range r.vBoundaries {
 		if exists {
 			borderCount++
 		}
@@ -295,7 +310,7 @@ func (r *renderer) enforceTableMaxWidth() {
 
 	// Calculate minimum possible width and identify reducible columns
 	minPossible := 0
-	reducible := make([]int, 0, len(r.colWidths))
+	reducible := make([]int, 0, r.colCount())
 
 	for col, width := range r.colWidths {
 		minWidth, fixed := r.colMinWidth(col)
@@ -378,7 +393,7 @@ func (r *renderer) cellWidth(cell *Cell) int {
 	// Add space from removed internal vertical borders
 	// Check borders between columns within cell span
 	for i := 1; i < cell.cSpan; i++ {
-		if r.colBorders[cell.c+i] {
+		if r.vBoundaries[cell.c+i] {
 			width++ // Border column removed, add its width
 		}
 	}
@@ -399,7 +414,7 @@ func (r *renderer) cellHeight(cell *Cell) int {
 	// Add space from removed internal horizontal borders
 	// Check borders between rows within cell span
 	for i := 1; i < cell.rSpan; i++ {
-		if r.rowBorders[cell.r+i] {
+		if r.hBoundaries[cell.r+i] {
 			height++ // Border line removed, add its height
 		}
 	}
@@ -424,8 +439,7 @@ func (r *renderer) buildCellLayouts() {
 
 // render returns the complete ASCII table as a string.
 func (r *renderer) render() string {
-	rows := r.t.g.Rows()
-	if rows == 0 || r.t.g.Cols() == 0 {
+	if r.rowCount() == 0 || r.colCount() == 0 {
 		return ""
 	}
 
