@@ -140,3 +140,45 @@ func (t *Table) Print() {
 func (t *Table) PrintDebug() string {
 	return t.printDebug()
 }
+
+// Row creates a row slice for use with Simple.
+// Syntactic sugar for cleaner table construction.
+//
+// Example:
+//
+//	t := tbl.Simple(
+//	    tbl.Row("Name", "Age", "City"),
+//	    tbl.Row("Alice", "30", "NYC"),
+//	    tbl.Row("Bob", "25", "LA"),
+//	)
+func Row(cells ...string) []string {
+	return cells
+}
+
+// Simple creates and populates a table from rows.
+// Each row is a string slice with Static [1,1] cells.
+// Returns configured Table ready for styling or rendering.
+//
+// Example with Row helper:
+//
+//	tbl.Simple(
+//	    tbl.Row("Name", "Age"),
+//	    tbl.Row("Alice", "30"),
+//	).Print()
+//
+// Example without Row helper:
+//
+//	tbl.Simple(
+//	    []string{"Name", "Age"},
+//	    []string{"Alice", "30"},
+//	).Print()
+func Simple(rows ...[]string) *Table {
+	t := New()
+	for _, row := range rows {
+		t.AddRow()
+		for _, content := range row {
+			t.AddCell(Static, 1, 1, content)
+		}
+	}
+	return t
+}
