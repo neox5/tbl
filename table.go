@@ -110,6 +110,11 @@ func (t *Table) RenderTo(w io.Writer) error {
 	return err
 }
 
+// Print prints the rendered output to stdout.
+func (t *Table) Print() {
+	fmt.Print(t.Render())
+}
+
 // PrintDebug renders table structure in TBL Grid Notation format.
 // Shows grid layout with cell types and current cursor position.
 // Returns empty string if table has no rows.

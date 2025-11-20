@@ -29,6 +29,10 @@ func main() {
 		}
 	}()
 
+	// t.AddRow()
+	// t.AddCell(tbl.Flex, 1, 1, "TEST")
+	// t.AddCell(tbl.Static, 1, 4, "tbl")
+
 	// Row 0: Flex cells (will expand)
 	t.AddRow().
 		AddCell(tbl.Static, 2, 1, "tbl").
@@ -39,7 +43,7 @@ func main() {
 	t.AddRow().
 		AddCell(tbl.Static, 1, 1, "Alice").
 		AddCell(tbl.Static, 1, 1, "Farmer").
-		AddCell(tbl.Static, 2, 1, "Backend\nEngineer").
+		AddCell(tbl.Static, 1, 1, "Backend\nEngineer").
 		AddCell(tbl.Static, 1, 1, "Remote")
 
 	// Row 2: Full span summary cells
@@ -55,5 +59,5 @@ func main() {
 		Border:  tbl.Border{Sides: tbl.BorderAll},
 	})
 
-	fmt.Println(t.Render())
+	t.Print()
 }
