@@ -166,13 +166,13 @@ func (r *renderer) buildContentLines(row int) [][]RenderOp {
 			if r.vBorderAt(row, col) {
 				op = VLine{}
 			}
-			for i := 0; i < lineCount; i++ {
+			for i := range lineCount {
 				lines[i] = append(lines[i], op)
 			}
 		}
 
 		// Add cell content to all lines
-		for i := 0; i < lineCount; i++ {
+		for i := range lineCount {
 			op = Content{Text: content[offset+i]}
 			lines[i] = append(lines[i], op)
 		}
@@ -183,7 +183,7 @@ func (r *renderer) buildContentLines(row int) [][]RenderOp {
 			if r.vBorderAt(row, r.colCount()) {
 				op = VLine{}
 			}
-			for i := 0; i < lineCount; i++ {
+			for i := range lineCount {
 				lines[i] = append(lines[i], op)
 			}
 		}
@@ -284,25 +284,23 @@ func (r *renderer) vBorderAt(row, col int) bool {
 // Examines borders in all four directions (top, right, bottom, left).
 //
 // Parameters:
-//   - grid: dense cell grid
-//   - row: border line position (0 = top border, len(grid) = bottom border)
-//   - col: column position (0 = left edge, len(grid[0]) = right edge)
-//   - resolveStyle: function to resolve cell style
+//   - row: border line position (0 = top border, rowCount() = bottom border)
+//   - col: column position (0 = left edge, colCount() = right edge)
 //
 // Returns appropriate junction RenderOp based on border directions.
 func (r *renderer) selectJunction(row, col int) RenderOp {
-	// Corners
+	// Table corners
 	if row == 0 && col == 0 {
-		return CornerTL{} // â"Œ
+		return CornerTL{} // top-left: '┌'
 	}
 	if row == 0 && col == r.colCount() {
-		return CornerTR{} // â"
+		return CornerTR{} // top-right: '┐'
 	}
 	if row == r.rowCount() && col == 0 {
-		return CornerBL{} // â""
+		return CornerBL{} // bottom-left: '└'
 	}
 	if row == r.rowCount() && col == r.colCount() {
-		return CornerBR{} // â"˜
+		return CornerBR{} // bottom-right: '┘'
 	}
 
 	// Calculate all 4 boundaries meeting at junction
@@ -311,33 +309,45 @@ func (r *renderer) selectJunction(row, col int) RenderOp {
 	bottom := r.vBorderAt(row, col)
 	left := r.hBorderAt(row, col-1)
 
-	// HLine (horizontal continuation)
+	// Continuations
 	if !top && right && !bottom && left {
-		return HLine{Width: 1}
+		return HLine{Width: 1} // horizontal: '─'
 	}
-
-	// VLine (vertical continuation)
 	if top && !right && bottom && !left {
-		return VLine{}
+		return VLine{} // vertical: '│'
 	}
 
 	// T-junctions
 	if !top && right && bottom && left {
-		return CornerT{} // â"¬
+		return CornerT{} // top T: '┬'
 	}
 	if top && right && !bottom && left {
-		return CornerB{} // â"´
+		return CornerB{} // bottom T: '┴'
 	}
 	if top && right && bottom && !left {
-		return CornerL{} // â"œ
+		return CornerL{} // left T: '├'
 	}
 	if top && !right && bottom && left {
-		return CornerR{} // â"¤
+		return CornerR{} // right T: '┤'
 	}
 
 	// Cross junction
 	if top && right && bottom && left {
-		return CornerX{} // â"¼
+		return CornerX{} // cross: '┼'
+	}
+
+	// Interior corners (for cells with partial borders)
+	if !top && right && bottom && !left {
+		return CornerTL{} // interior top-left: '┌'
+	}
+	if !top && !right && bottom && left {
+		return CornerTR{} // interior top-right: '┐'
+	}
+	if top && right && !bottom && !left {
+		return CornerBL{} // interior bottom-left: '└'
+	}
+	if top && !right && !bottom && left {
+		return CornerBR{} // interior bottom-right: '┘'
 	}
 
 	// No border at this junction

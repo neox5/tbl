@@ -29,10 +29,6 @@ func main() {
 		}
 	}()
 
-	// t.AddRow()
-	// t.AddCell(tbl.Flex, 1, 1, "TEST")
-	// t.AddCell(tbl.Static, 1, 4, "tbl")
-
 	// Row 0: Flex cells (will expand)
 	t.AddRow().
 		AddCell(tbl.Static, 2, 1, "tbl").
@@ -57,6 +53,31 @@ func main() {
 		HAlign:  tbl.HAlignCenter,
 		VAlign:  tbl.VAlignMiddle,
 		Border:  tbl.Border{Sides: tbl.BorderAll},
+	})
+
+	t.Print()
+
+	// ###########################################
+
+	t = tbl.New()
+
+	t.AddRow().
+		AddCell(tbl.Static, 1, 1, "Name").
+		AddCell(tbl.Static, 1, 1, "Age").
+		AddCell(tbl.Static, 1, 1, "City")
+
+	t.AddRow().
+		AddCell(tbl.Static, 1, 1, "Alice").
+		AddCell(tbl.Static, 1, 1, "30").
+		AddCell(tbl.Static, 1, 1, "NYC")
+
+	t.AddRow().
+		AddCell(tbl.Static, 1, 1, "Bob").
+		AddCell(tbl.Static, 1, 1, "25").
+		AddCell(tbl.Static, 1, 1, "LA")
+
+	t.SetRowStyle(0, tbl.CellStyle{
+		Border: tbl.Border{Sides: tbl.BorderAll},
 	})
 
 	t.Print()
