@@ -5,14 +5,6 @@ import (
 	"strings"
 )
 
-// CellType indicates whether a cell is static or flexible.
-type CellType int
-
-const (
-	Static CellType = iota
-	Flex
-)
-
 // Cell represents a table cell with position, span and content information.
 type Cell struct {
 	id           ID
@@ -21,7 +13,7 @@ type Cell struct {
 	rSpan, cSpan int
 	initialSpan  int // original colSpan at creation
 	content      string
-	rawLines     []string // unconstraint content lines
+	rawLines     []string // unconstrained content lines
 }
 
 // NewCell creates a new cell.
@@ -61,7 +53,7 @@ func (c *Cell) AddedSpan() int {
 // Content returns the cell text.
 func (c *Cell) Content() string { return c.content }
 
-// Width returns the required character width of the cell content (unconstraint).
+// Width returns the required character width of the cell content (unconstrained).
 func (c *Cell) Width() int {
 	var width int
 	for _, l := range c.rawLines {
@@ -72,7 +64,7 @@ func (c *Cell) Width() int {
 	return width
 }
 
-// Height returns the required lines of the cell content (unconstraint).
+// Height returns the required lines of the cell content (unconstrained).
 func (c *Cell) Height() int {
 	return len(c.rawLines)
 }

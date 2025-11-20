@@ -7,8 +7,25 @@ import (
 	"github.com/neox5/btmp"
 )
 
-// ID identifies a cell in the table.
-type ID int64
+// Package tbl provides CLI table rendering with PostgreSQL-style borders.
+//
+// Features:
+//   - Cell-level row/col spanning
+//   - Flex and Static cell types for dynamic column sizing
+//   - Multi-line content with word wrapping
+//   - Configurable borders, padding, and alignment
+//   - Dynamic column resolution
+//
+// Basic usage:
+//
+//	t := tbl.New()
+//	t.AddRow().
+//	    AddCell(tbl.Static, 1, 1, "Name").
+//	    AddCell(tbl.Static, 1, 1, "Age")
+//	t.AddRow().
+//	    AddCell(tbl.Static, 1, 1, "Alice").
+//	    AddCell(tbl.Static, 1, 1, "30")
+//	t.Print()
 
 // Table manages incremental table construction with flex/static cells.
 type Table struct {
@@ -33,12 +50,13 @@ type Table struct {
 	cellStyles   map[ID]CellStyle
 }
 
-// New creates a new Table with zero columns.
+// New creates a new Table with zero columns (dynamic sizing).
 func New() *Table {
 	return NewWithCols(0)
 }
 
 // NewWithCols creates a new Table with initial column capacity.
+// If cols > 0, column count is fixed and cannot expand.
 func NewWithCols(cols int) *Table {
 	if cols < 0 {
 		panic("tbl: invalid cols value")
