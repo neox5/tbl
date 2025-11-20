@@ -45,10 +45,6 @@ func (r *renderer) lastCellInRow(cell *Cell) bool {
 //  3. Calculate row heights with finalized column widths
 //  4. Generate cell layouts
 func newRenderer(t *Table) *renderer {
-	if !t.g.B.All() {
-		panic("tbl: incomplete table")
-	}
-
 	r := &renderer{
 		t:             t,
 		styles:        make(map[ID]CellStyle),

@@ -99,12 +99,13 @@ func (t *Table) AddCell(ct CellType, rowSpan, colSpan int, content string) *Tabl
 
 // Render returns the ASCII table as a string.
 func (t *Table) Render() string {
+	t.finalize()
 	return newRenderer(t).render()
 }
 
 // RenderTo writes the table to w.
 func (t *Table) RenderTo(w io.Writer) error {
-	s := newRenderer(t).render()
+	s := t.Render()
 	_, err := io.WriteString(w, s)
 	return err
 }

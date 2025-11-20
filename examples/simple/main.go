@@ -32,25 +32,28 @@ func main() {
 	// Row 0: Flex cells (will expand)
 	t.AddRow().
 		AddCell(tbl.Static, 2, 1, "tbl").
-		AddCell(tbl.Flex, 1, 1, "Name").
+		AddCell(tbl.Flex, 1, 1, "Name\nSurname").
 		AddCell(tbl.Flex, 1, 1, "Role")
 
 	// Row 1: Static cells with different structure
 	t.AddRow().
 		AddCell(tbl.Static, 1, 1, "Alice").
 		AddCell(tbl.Static, 1, 1, "Farmer").
-		AddCell(tbl.Static, 1, 1, "Engineer").
+		AddCell(tbl.Static, 2, 1, "Backend\nEngineer").
 		AddCell(tbl.Static, 1, 1, "Remote")
 
 	// Row 2: Full span summary cells
 	t.AddRow().
-		AddCell(tbl.Static, 1, 5, "Summary")
+		AddCell(tbl.Flex, 1, 1, "Summary").
+		AddCell(tbl.Static, 1, 1, "END")
 
-	t.BorderAll()
+	// t.BorderAll()
+	t.SetDefaultStyle(tbl.CellStyle{
+		Padding: tbl.Padding{Left: 1, Right: 1},
+		HAlign:  tbl.HAlignCenter,
+		VAlign:  tbl.VAlignMiddle,
+		Border:  tbl.Border{Sides: tbl.BorderAll},
+	})
 
-	fmt.Println("Rendered table:")
 	fmt.Println(t.Render())
-	fmt.Println()
-	fmt.Println("Debug view:")
-	fmt.Println(t.PrintDebug())
 }

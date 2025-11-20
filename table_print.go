@@ -79,7 +79,7 @@ func (t *Table) renderRow(row int) string {
 
 		if cell == nil {
 			// Empty cell (shouldn't happen with valid grid)
-			b.WriteString("?")
+			b.WriteString("_")
 			if col < cols-1 {
 				b.WriteString("|")
 			}
