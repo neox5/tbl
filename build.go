@@ -2,6 +2,26 @@ package tbl
 
 import "fmt"
 
+// addCol adds column to grid and stores configuration.
+// Internal implementation for AddCol().
+func (t *Table) addCol(width, minWidth, maxWidth int) {
+	// Get current column count
+	col := t.g.Cols()
+
+	// Expand grid by one column
+	t.g.GrowCols(1)
+
+	// Store configuration
+	t.colConfigs[col] = ColConfig{
+		Width:    width,
+		MinWidth: minWidth,
+		MaxWidth: maxWidth,
+	}
+
+	// Mark columns as fixed
+	t.colsFixed = true
+}
+
 // addRow advances to next row with validation and cursor positioning.
 // Internal implementation for AddRow().
 func (t *Table) addRow() {
@@ -15,6 +35,11 @@ func (t *Table) addRow() {
 		if !t.colsFixed && t.isRowStatic(t.row) {
 			t.colsFixed = true
 		}
+	}
+
+	// Safeguard: ensure at least 1 column exists for first row
+	if t.row == -1 && t.g.Cols() == 0 {
+		t.g.GrowCols(1)
 	}
 
 	// Ensure next row exists

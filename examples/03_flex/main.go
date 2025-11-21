@@ -39,6 +39,8 @@ func main() {
 	t.AddRow().
 		AddCell(tbl.Static, 1, 1, "Alice").
 		AddCell(tbl.Static, 1, 1, "Farmer").
+		AddCell(tbl.Static, 1, 1, "TEst").
+		AddCell(tbl.Static, 1, 1, "TEst2").
 		AddCell(tbl.Static, 1, 1, "Backend\nEngineer").
 		AddCell(tbl.Static, 1, 1, "Remote")
 
@@ -53,31 +55,6 @@ func main() {
 		HAlign:  tbl.HAlignCenter,
 		VAlign:  tbl.VAlignMiddle,
 		Border:  tbl.Border{Sides: tbl.BorderAll},
-	})
-
-	t.Print()
-
-	// ###########################################
-
-	t = tbl.New()
-
-	t.AddRow().
-		AddCell(tbl.Static, 1, 1, "Name").
-		AddCell(tbl.Static, 1, 1, "Age").
-		AddCell(tbl.Static, 1, 1, "City")
-
-	t.AddRow().
-		AddCell(tbl.Static, 1, 1, "Alice").
-		AddCell(tbl.Static, 1, 1, "30").
-		AddCell(tbl.Static, 1, 1, "NYC")
-
-	t.AddRow().
-		AddCell(tbl.Static, 1, 1, "Bob").
-		AddCell(tbl.Static, 1, 1, "25").
-		AddCell(tbl.Static, 1, 1, "LA")
-
-	t.SetRowStyle(0, tbl.CellStyle{
-		Border: tbl.Border{Sides: tbl.BorderAll},
 	})
 
 	t.Print()

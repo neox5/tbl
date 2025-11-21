@@ -63,7 +63,7 @@ func NewWithCols(cols int) *Table {
 	}
 
 	t := &Table{
-		g:          btmp.NewGridWithSize(1, max(cols, 1)),
+		g:          btmp.NewGridWithSize(1, cols),
 		cells:      make(map[ID]*Cell),
 		row:        -1,
 		col:        0,
@@ -89,6 +89,36 @@ func NewWithCols(cols int) *Table {
 		t.colsFixed = true
 	}
 
+	return t
+}
+
+// AddCol adds a column with width constraints.
+// Must be called before first AddRow().
+// Sets column count as fixed, but first row can still expand via flex cells.
+// Subsequent rows cannot expand beyond established column count.
+func (t *Table) AddCol(width, minWidth, maxWidth int) *Table {
+	// Validate: no rows yet
+	if t.row >= 0 {
+		panic("tbl: cannot add columns after AddRow")
+	}
+
+	// Validate: non-negative values
+	if width < 0 || minWidth < 0 || maxWidth < 0 {
+		panic(fmt.Sprintf("tbl: invalid column config width=%d minWidth=%d maxWidth=%d", width, minWidth, maxWidth))
+	}
+
+	// Validate: logical constraints
+	if width > 0 && minWidth > 0 && width < minWidth {
+		panic(fmt.Sprintf("tbl: width %d less than minWidth %d", width, minWidth))
+	}
+	if width > 0 && maxWidth > 0 && width > maxWidth {
+		panic(fmt.Sprintf("tbl: width %d greater than maxWidth %d", width, maxWidth))
+	}
+	if minWidth > 0 && maxWidth > 0 && minWidth > maxWidth {
+		panic(fmt.Sprintf("tbl: minWidth %d greater than maxWidth %d", minWidth, maxWidth))
+	}
+
+	t.addCol(width, minWidth, maxWidth)
 	return t
 }
 
