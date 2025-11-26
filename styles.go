@@ -2,10 +2,21 @@ package tbl
 
 import "fmt"
 
-// Styler applies styling to a CellStyle.
-type Styler interface {
+// Freestyler applies styling to a CellStyle.
+//
+// Tribute to the Bomfunk MC's Classic: https://youtu.be/ymNFyxvIdaM
+type Freestyler interface {
 	Style(base CellStyle) CellStyle
 }
+
+// WrapMode controls how content overflow is handled.
+type WrapMode int
+
+const (
+	WrapWord     WrapMode = iota // wrap at word boundaries (default)
+	WrapChar                     // wrap at any character
+	WrapTruncate                 // truncate with ellipsis
+)
 
 // Padding specifies space around cell content.
 type Padding struct {
@@ -34,11 +45,12 @@ type CellStyle struct {
 	HAlign   HAlign
 	VAlign   VAlign
 	Border   Border
+	WrapMode WrapMode
 	Template CharTemplate
 }
 
 // NewStyle creates a CellStyle from stylers.
-func NewStyle(stylers ...Styler) CellStyle {
+func NewStyle(stylers ...Freestyler) CellStyle {
 	result := CellStyle{}
 	for _, s := range stylers {
 		if s != nil {
@@ -49,7 +61,7 @@ func NewStyle(stylers ...Styler) CellStyle {
 }
 
 // Apply applies stylers to this CellStyle, returning a new CellStyle.
-func (s CellStyle) Apply(stylers ...Styler) CellStyle {
+func (s CellStyle) Apply(stylers ...Freestyler) CellStyle {
 	result := s
 	for _, styler := range stylers {
 		if styler != nil {
@@ -59,7 +71,7 @@ func (s CellStyle) Apply(stylers ...Styler) CellStyle {
 	return result
 }
 
-// Style implements Styler for CellStyle (uses merge).
+// Style implements Freestyler for CellStyle (uses merge).
 func (s CellStyle) Style(base CellStyle) CellStyle {
 	return base.merge(s)
 }
@@ -97,6 +109,11 @@ func (s CellStyle) merge(other CellStyle) CellStyle {
 		result.Border = other.Border
 	}
 
+	// WrapMode: only override if explicitly set (non-zero)
+	if other.WrapMode != 0 {
+		result.WrapMode = other.WrapMode
+	}
+
 	// Template: only override if explicitly set (non-zero runes)
 	if other.Template != (CharTemplate{}) {
 		result.Template = other.Template
@@ -105,27 +122,33 @@ func (s CellStyle) merge(other CellStyle) CellStyle {
 	return result
 }
 
-// HAlign implements Styler (direct field assignment).
+// HAlign implements Freestyler (direct field assignment).
 func (h HAlign) Style(base CellStyle) CellStyle {
 	base.HAlign = h
 	return base
 }
 
-// VAlign implements Styler (direct field assignment).
+// VAlign implements Freestyler (direct field assignment).
 func (v VAlign) Style(base CellStyle) CellStyle {
 	base.VAlign = v
 	return base
 }
 
-// Padding implements Styler (direct field assignment).
+// Padding implements Freestyler (direct field assignment).
 func (p Padding) Style(base CellStyle) CellStyle {
 	base.Padding = p
 	return base
 }
 
-// Border implements Styler (direct field assignment).
+// Border implements Freestyler (direct field assignment).
 func (b Border) Style(base CellStyle) CellStyle {
 	base.Border = b
+	return base
+}
+
+// WrapMode implements Freestyler (direct field assignment).
+func (w WrapMode) Style(base CellStyle) CellStyle {
+	base.WrapMode = w
 	return base
 }
 
@@ -244,7 +267,7 @@ func Borders(sides BorderSide) Border {
 }
 
 // containsTemplate checks if any styler is a CharTemplate.
-func containsTemplate(stylers []Styler) bool {
+func containsTemplate(stylers []Freestyler) bool {
 	for _, s := range stylers {
 		if _, ok := s.(CharTemplate); ok {
 			return true
@@ -255,7 +278,7 @@ func containsTemplate(stylers []Styler) bool {
 
 // SetDefaultStyle sets the base style for all cells.
 // Can be overridden by column, row, or cell-specific styles.
-func (t *Table) SetDefaultStyle(stylers ...Styler) *Table {
+func (t *Table) SetDefaultStyle(stylers ...Freestyler) *Table {
 	t.defaultStyle = t.defaultStyle.Apply(stylers...)
 	return t
 }
@@ -263,7 +286,7 @@ func (t *Table) SetDefaultStyle(stylers ...Styler) *Table {
 // SetColStyle sets style for all cells in column.
 // Overrides default style, can be overridden by row or cell styles.
 // Panics if stylers contain CharTemplate (templates are table-level only).
-func (t *Table) SetColStyle(col int, stylers ...Styler) *Table {
+func (t *Table) SetColStyle(col int, stylers ...Freestyler) *Table {
 	if containsTemplate(stylers) {
 		panic("tbl: CharTemplate only supported via SetDefaultStyle")
 	}
@@ -274,7 +297,7 @@ func (t *Table) SetColStyle(col int, stylers ...Styler) *Table {
 // SetRowStyle sets style for all cells in row.
 // Overrides default and column styles, can be overridden by cell styles.
 // Panics if stylers contain CharTemplate (templates are table-level only).
-func (t *Table) SetRowStyle(row int, stylers ...Styler) *Table {
+func (t *Table) SetRowStyle(row int, stylers ...Freestyler) *Table {
 	if containsTemplate(stylers) {
 		panic("tbl: CharTemplate only supported via SetDefaultStyle")
 	}
@@ -285,7 +308,7 @@ func (t *Table) SetRowStyle(row int, stylers ...Styler) *Table {
 // SetCellStyle sets style for specific cell.
 // Highest priority, overrides all other styles.
 // Panics if stylers contain CharTemplate (templates are table-level only).
-func (t *Table) SetCellStyle(id ID, stylers ...Styler) *Table {
+func (t *Table) SetCellStyle(id ID, stylers ...Freestyler) *Table {
 	if containsTemplate(stylers) {
 		panic("tbl: CharTemplate only supported via SetDefaultStyle")
 	}

@@ -127,6 +127,7 @@ func (r *renderer) calculateHeights() {
 
 // updateRowHeights calculates and updates row heights for cell.
 // Uses final column widths to determine content wrapping.
+// Respects WrapMode from cell style.
 // Handles both single-row (span=1) and multi-row (span>1) cells.
 func (r *renderer) updateRowHeights(cell *Cell) {
 	style := r.styles[cell.id]
@@ -135,8 +136,16 @@ func (r *renderer) updateRowHeights(cell *Cell) {
 	totalWidth := r.cellWidth(cell)
 	contentWidth := totalWidth - style.Padding.Left - style.Padding.Right
 
-	// Rebuild content lines with final width constraint
-	contentLines := buildRawLines(cell.content, contentWidth)
+	// Rebuild content lines with final width constraint and WrapMode
+	var contentLines []string
+	switch style.WrapMode {
+	case WrapChar:
+		contentLines = buildRawLinesChar(cell.content, contentWidth)
+	case WrapTruncate:
+		contentLines = buildRawLinesTruncate(cell.content, contentWidth)
+	default: // WrapWord (default)
+		contentLines = buildRawLines(cell.content, contentWidth)
+	}
 	contentHeight := len(contentLines)
 
 	required := style.Padding.Top + contentHeight + style.Padding.Bottom

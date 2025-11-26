@@ -8,7 +8,7 @@ import "strings"
 //
 // Process:
 //  1. Calculate content dimensions (subtract padding)
-//  2. Build content lines with word wrapping
+//  2. Build content lines with word wrapping based on WrapMode
 //  3. Apply horizontal alignment to each line
 //  4. Apply vertical alignment (padding/truncation to height)
 //  5. Add horizontal padding to each line
@@ -31,8 +31,16 @@ func (c *Cell) Layout(width, height int, style CellStyle) []string {
 		return lines
 	}
 
-	// Build content lines with wrapping
-	contentLines := buildRawLines(c.content, contentWidth)
+	// Build content lines with wrapping based on WrapMode
+	var contentLines []string
+	switch style.WrapMode {
+	case WrapChar:
+		contentLines = buildRawLinesChar(c.content, contentWidth)
+	case WrapTruncate:
+		contentLines = buildRawLinesTruncate(c.content, contentWidth)
+	default: // WrapWord (default)
+		contentLines = buildRawLines(c.content, contentWidth)
+	}
 
 	// Apply horizontal alignment
 	alignedLines := applyHAlign(contentLines, contentWidth, style.HAlign)
@@ -64,7 +72,7 @@ func (c *Cell) Layout(width, height int, style CellStyle) []string {
 	return finalLines
 }
 
-// buildRawLines converts content into lines that fit width.
+// buildRawLines converts content into lines that fit width using word wrapping.
 // Respects explicit line breaks (\n) in content.
 // Words longer than width are truncated with ellipsis.
 // Returns lines without padding (natural word wrap boundaries).
@@ -124,6 +132,71 @@ func buildRawLines(content string, width int) []string {
 		if l.Len() > 0 {
 			lines = append(lines, l.String())
 		}
+	}
+
+	return lines
+}
+
+// buildRawLinesChar converts content into lines that fit width using character wrapping.
+// Wraps at any character boundary, ignoring word boundaries.
+// Respects explicit line breaks (\n) in content.
+func buildRawLinesChar(content string, width int) []string {
+	if width <= 0 || content == "" {
+		return []string{""}
+	}
+
+	segments := strings.Split(content, "\n")
+	var lines []string
+
+	for _, seg := range segments {
+		seg = strings.TrimSpace(seg)
+
+		// Empty segment → empty line
+		if seg == "" {
+			lines = append(lines, "")
+			continue
+		}
+
+		// Wrap at character boundaries
+		for len(seg) > 0 {
+			if len(seg) <= width {
+				lines = append(lines, seg)
+				break
+			}
+			lines = append(lines, seg[:width])
+			seg = seg[width:]
+		}
+	}
+
+	return lines
+}
+
+// buildRawLinesTruncate converts content into lines, truncating overflow with ellipsis.
+// Each line from explicit breaks (\n) is truncated independently.
+// No wrapping occurs - content exceeding width is cut off.
+func buildRawLinesTruncate(content string, width int) []string {
+	if width <= 0 || content == "" {
+		return []string{""}
+	}
+
+	segments := strings.Split(content, "\n")
+	var lines []string
+
+	for _, seg := range segments {
+		seg = strings.TrimSpace(seg)
+
+		// Empty segment → empty line
+		if seg == "" {
+			lines = append(lines, "")
+			continue
+		}
+
+		// Truncate if too long
+		if len(seg) > width {
+			seg = truncateWithEllipsis(seg, width)
+		}
+
+		lines = append(lines, seg)
 	}
 
 	return lines

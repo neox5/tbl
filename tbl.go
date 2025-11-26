@@ -97,7 +97,7 @@ func NewWithCols(cols int) *Table {
 // Must be called before first AddRow().
 // Sets column count as fixed, but first row can still expand via flex cells.
 // Subsequent rows cannot expand beyond established column count.
-func (t *Table) AddCol(width, minWidth, maxWidth int, stylers ...Styler) *Table {
+func (t *Table) AddCol(width, minWidth, maxWidth int, stylers ...Freestyler) *Table {
 	// Validate: no rows yet
 	if t.row >= 0 {
 		panic("tbl: cannot add columns after AddRow")
