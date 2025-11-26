@@ -74,12 +74,13 @@ func NewWithCols(cols int) *Table {
 		colConfigs:  make(map[int]ColConfig),
 
 		// Initialize style registry
-		defaultStyle: CellStyle{
-			Padding: Padding{Top: 0, Bottom: 0, Left: 1, Right: 1},
-			HAlign:  HAlignLeft,
-			VAlign:  VAlignTop,
-			Border:  Border{Sides: BorderNone},
-		},
+		defaultStyle: NewStyle(
+			Pad(0, 1),
+			Left(),
+			Top(),
+			BNone(),
+			Thin(),
+		),
 		columnStyles: make(map[int]CellStyle),
 		rowStyles:    make(map[int]CellStyle),
 		cellStyles:   make(map[ID]CellStyle),
@@ -123,6 +124,9 @@ func (t *Table) AddCol(width, minWidth, maxWidth int, stylers ...Styler) *Table 
 
 	// Apply style if provided
 	if len(stylers) > 0 {
+		if containsTemplate(stylers) {
+			panic("tbl: CharTemplate only supported via SetDefaultStyle")
+		}
 		t.columnStyles[col] = t.columnStyles[col].Apply(stylers...)
 	}
 
@@ -150,19 +154,6 @@ func (t *Table) AddCell(ct CellType, rowSpan, colSpan int, content string) *Tabl
 
 	t.addCell(ct, rowSpan, colSpan, content)
 	return t
-}
-
-// Render returns the ASCII table as a string.
-func (t *Table) Render() string {
-	t.finalize()
-	return newRenderer(t).render()
-}
-
-// RenderTo writes the table to w.
-func (t *Table) RenderTo(w io.Writer) error {
-	s := t.Render()
-	_, err := io.WriteString(w, s)
-	return err
 }
 
 func Row(cells ...string) []string {
@@ -195,6 +186,19 @@ func Simple(rows ...[]string) *Table {
 		}
 	}
 	return t
+}
+
+// Render returns the ASCII table as a string.
+func (t *Table) Render() string {
+	t.finalize()
+	return newRenderer(t).render()
+}
+
+// RenderTo writes the table to w.
+func (t *Table) RenderTo(w io.Writer) error {
+	s := t.Render()
+	_, err := io.WriteString(w, s)
+	return err
 }
 
 // Print prints the rendered output to stdout.

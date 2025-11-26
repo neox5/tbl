@@ -30,10 +30,11 @@ func (b Border) IsVisual(side BorderSide) bool {
 
 // CellStyle contains presentation attributes for a cell.
 type CellStyle struct {
-	Padding Padding
-	HAlign  HAlign
-	VAlign  VAlign
-	Border  Border
+	Padding  Padding
+	HAlign   HAlign
+	VAlign   VAlign
+	Border   Border
+	Template CharTemplate
 }
 
 // NewStyle creates a CellStyle from stylers.
@@ -94,6 +95,11 @@ func (s CellStyle) merge(other CellStyle) CellStyle {
 	// Border: only override if explicitly set (non-zero)
 	if other.Border.Sides != 0 || other.Border.Physical != 0 {
 		result.Border = other.Border
+	}
+
+	// Template: only override if explicitly set (non-zero runes)
+	if other.Template != (CharTemplate{}) {
+		result.Template = other.Template
 	}
 
 	return result
@@ -237,6 +243,16 @@ func Borders(sides BorderSide) Border {
 	return Border{Sides: sides}
 }
 
+// containsTemplate checks if any styler is a CharTemplate.
+func containsTemplate(stylers []Styler) bool {
+	for _, s := range stylers {
+		if _, ok := s.(CharTemplate); ok {
+			return true
+		}
+	}
+	return false
+}
+
 // SetDefaultStyle sets the base style for all cells.
 // Can be overridden by column, row, or cell-specific styles.
 func (t *Table) SetDefaultStyle(stylers ...Styler) *Table {
@@ -246,21 +262,33 @@ func (t *Table) SetDefaultStyle(stylers ...Styler) *Table {
 
 // SetColStyle sets style for all cells in column.
 // Overrides default style, can be overridden by row or cell styles.
+// Panics if stylers contain CharTemplate (templates are table-level only).
 func (t *Table) SetColStyle(col int, stylers ...Styler) *Table {
+	if containsTemplate(stylers) {
+		panic("tbl: CharTemplate only supported via SetDefaultStyle")
+	}
 	t.columnStyles[col] = t.columnStyles[col].Apply(stylers...)
 	return t
 }
 
 // SetRowStyle sets style for all cells in row.
 // Overrides default and column styles, can be overridden by cell styles.
+// Panics if stylers contain CharTemplate (templates are table-level only).
 func (t *Table) SetRowStyle(row int, stylers ...Styler) *Table {
+	if containsTemplate(stylers) {
+		panic("tbl: CharTemplate only supported via SetDefaultStyle")
+	}
 	t.rowStyles[row] = t.rowStyles[row].Apply(stylers...)
 	return t
 }
 
 // SetCellStyle sets style for specific cell.
 // Highest priority, overrides all other styles.
+// Panics if stylers contain CharTemplate (templates are table-level only).
 func (t *Table) SetCellStyle(id ID, stylers ...Styler) *Table {
+	if containsTemplate(stylers) {
+		panic("tbl: CharTemplate only supported via SetDefaultStyle")
+	}
 	t.cellStyles[id] = t.cellStyles[id].Apply(stylers...)
 	return t
 }

@@ -15,6 +15,7 @@ type renderer struct {
 	vBoundaries   []bool          // vertical boundary presence
 	hBoundaries   []bool          // horizontal boundary presence
 	cellLayouts   map[ID][]string // pre-computed content lines per cell
+	tpl           CharTemplate    // table-level template for rendering
 }
 
 // rowCount returns total number of rows in grid.
@@ -54,6 +55,7 @@ func newRenderer(t *Table) *renderer {
 		vBoundaries:   make([]bool, t.g.Cols()+1),
 		hBoundaries:   make([]bool, t.g.Rows()+1),
 		cellLayouts:   make(map[ID][]string),
+		tpl:           t.defaultStyle.Template,
 	}
 
 	// Initialize grid rows

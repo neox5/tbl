@@ -2,8 +2,11 @@ package tbl
 
 import "strings"
 
-// charTemplate defines the character set for rendering.
-type charTemplate struct {
+// CharTemplate defines character set for table rendering.
+// Template is a table-level property applied via SetDefaultStyle.
+// Attempting to use templates with SetRowStyle, SetColStyle, or
+// SetCellStyle will panic.
+type CharTemplate struct {
 	cornerTL rune
 	cornerTR rune
 	cornerBL rune
@@ -17,72 +20,83 @@ type charTemplate struct {
 	vLine    rune
 }
 
-// ASCII template (simple)
-var asciiTemplate = charTemplate{
-	cornerTL: '+',
-	cornerTR: '+',
-	cornerBL: '+',
-	cornerBR: '+',
-	cornerT:  '+',
-	cornerB:  '+',
-	cornerL:  '+',
-	cornerR:  '+',
-	cornerX:  '+',
-	hLine:    '-',
-	vLine:    '|',
+// Thin returns thin Unicode box-drawing template.
+func Thin() CharTemplate {
+	return CharTemplate{
+		cornerTL: '┌',
+		cornerTR: '┐',
+		cornerBL: '└',
+		cornerBR: '┘',
+		cornerT:  '┬',
+		cornerB:  '┴',
+		cornerL:  '├',
+		cornerR:  '┤',
+		cornerX:  '┼',
+		hLine:    '─',
+		vLine:    '│',
+	}
 }
 
-// Unicode thin box-drawing
-var thinTemplate = charTemplate{
-	cornerTL: '┌',
-	cornerTR: '┐',
-	cornerBL: '└',
-	cornerBR: '┘',
-	cornerT:  '┬',
-	cornerB:  '┴',
-	cornerL:  '├',
-	cornerR:  '┤',
-	cornerX:  '┼',
-	hLine:    '─',
-	vLine:    '│',
+// Thick returns thick Unicode box-drawing template.
+func Thick() CharTemplate {
+	return CharTemplate{
+		cornerTL: '┏',
+		cornerTR: '┓',
+		cornerBL: '┗',
+		cornerBR: '┛',
+		cornerT:  '┳',
+		cornerB:  '┻',
+		cornerL:  '┣',
+		cornerR:  '┫',
+		cornerX:  '╋',
+		hLine:    '━',
+		vLine:    '┃',
+	}
 }
 
-// Unicode thick box-drawing
-var thickTemplate = charTemplate{
-	cornerTL: '┏',
-	cornerTR: '┓',
-	cornerBL: '┗',
-	cornerBR: '┛',
-	cornerT:  '┳',
-	cornerB:  '┻',
-	cornerL:  '┣',
-	cornerR:  '┫',
-	cornerX:  '╋',
-	hLine:    '━',
-	vLine:    '┃',
+// Double returns double-line Unicode box template.
+func Double() CharTemplate {
+	return CharTemplate{
+		cornerTL: '╔',
+		cornerTR: '╗',
+		cornerBL: '╚',
+		cornerBR: '╝',
+		cornerT:  '╦',
+		cornerB:  '╩',
+		cornerL:  '╠',
+		cornerR:  '╣',
+		cornerX:  '╬',
+		hLine:    '═',
+		vLine:    '║',
+	}
 }
 
-// Unicode double-line box
-var doubleTemplate = charTemplate{
-	cornerTL: '╔',
-	cornerTR: '╗',
-	cornerBL: '╚',
-	cornerBR: '╝',
-	cornerT:  '╦',
-	cornerB:  '╩',
-	cornerL:  '╠',
-	cornerR:  '╣',
-	cornerX:  '╬',
-	hLine:    '═',
-	vLine:    '║',
+// ASCII returns ASCII-only template using +|- characters.
+func ASCII() CharTemplate {
+	return CharTemplate{
+		cornerTL: '+',
+		cornerTR: '+',
+		cornerBL: '+',
+		cornerBR: '+',
+		cornerT:  '+',
+		cornerB:  '+',
+		cornerL:  '+',
+		cornerR:  '+',
+		cornerX:  '+',
+		hLine:    '-',
+		vLine:    '|',
+	}
 }
 
-// Select the default
-var defaultTemplate = thinTemplate
+// Style implements Styler for CharTemplate.
+func (ct CharTemplate) Style(base CellStyle) CellStyle {
+	base.Template = ct
+	return base
+}
 
-// writeLine writes single line (border or content) using ops.
+// writeLine writes single line (border or content) using ops and configured template.
 func (r *renderer) writeLine(b *strings.Builder, ops []RenderOp) {
-	tpl := defaultTemplate
+	tpl := r.tpl
 
 	for _, op := range ops {
 		switch v := op.(type) {
