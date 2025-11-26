@@ -5,6 +5,14 @@ import (
 	"strings"
 )
 
+// CellType indicates whether a cell is static or flexible.
+type CellType int
+
+const (
+	Static CellType = iota
+	Flex
+)
+
 // Cell represents a table cell with position, span and content information.
 type Cell struct {
 	id           ID

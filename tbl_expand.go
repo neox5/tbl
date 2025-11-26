@@ -5,6 +5,14 @@ import (
 	"sort"
 )
 
+// direction indicates traversal direction for flex cell scanning.
+type direction int
+
+const (
+	dirLeft direction = iota
+	dirRight
+)
+
 // flexCell represents a flex cell found during traversal.
 type flexCell struct {
 	cell      *Cell
@@ -26,12 +34,12 @@ func (t *Table) traverseFlex(row, col int) (bool, map[int][]flexCell) {
 	seen := make(map[ID]bool)
 
 	// Scan left
-	if t.traverseFlexDir(row, col, DirLeft, result, seen) {
+	if t.traverseFlexDir(row, col, dirLeft, result, seen) {
 		canTraverse = true
 	}
 
 	// Scan right (includes origin col)
-	if t.traverseFlexDir(row, col, DirRight, result, seen) {
+	if t.traverseFlexDir(row, col, dirRight, result, seen) {
 		canTraverse = true
 	}
 
@@ -41,7 +49,7 @@ func (t *Table) traverseFlex(row, col int) (bool, map[int][]flexCell) {
 // traverseFlexDir scans single direction from col position in row.
 // Stops at walls or grid boundaries.
 // For each flex cell found, recursively calls traverseFlex(row-1, flexCol).
-func (t *Table) traverseFlexDir(row, col int, dir Direction, result map[int][]flexCell, seen map[ID]bool) bool {
+func (t *Table) traverseFlexDir(row, col int, dir direction, result map[int][]flexCell, seen map[ID]bool) bool {
 	if row == 0 {
 		return true
 	}
@@ -50,7 +58,7 @@ func (t *Table) traverseFlexDir(row, col int, dir Direction, result map[int][]fl
 
 	// Determine iteration bounds
 	start, end, step := col, t.g.Cols(), 1
-	if dir == DirLeft {
+	if dir == dirLeft {
 		start, end, step = col-1, -1, -1
 	}
 

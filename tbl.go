@@ -7,25 +7,8 @@ import (
 	"github.com/neox5/btmp"
 )
 
-// Package tbl provides CLI table rendering with PostgreSQL-style borders.
-//
-// Features:
-//   - Cell-level row/col spanning
-//   - Flex and Static cell types for dynamic column sizing
-//   - Multi-line content with word wrapping
-//   - Configurable borders, padding, and alignment
-//   - Dynamic column resolution
-//
-// Basic usage:
-//
-//	t := tbl.New()
-//	t.AddRow().
-//	    AddCell(tbl.Static, 1, 1, "Name").
-//	    AddCell(tbl.Static, 1, 1, "Age")
-//	t.AddRow().
-//	    AddCell(tbl.Static, 1, 1, "Alice").
-//	    AddCell(tbl.Static, 1, 1, "30")
-//	t.Print()
+// ID identifies a cell in the table.
+type ID int64
 
 // Table manages incremental table construction with flex/static cells.
 type Table struct {
@@ -48,6 +31,9 @@ type Table struct {
 	columnStyles map[int]CellStyle
 	rowStyles    map[int]CellStyle
 	cellStyles   map[ID]CellStyle
+
+	// Programmable style hook
+	funcStyler Funcstyler
 }
 
 // New creates a new Table with zero columns (dynamic sizing).
@@ -67,6 +53,7 @@ func NewWithCols(cols int) *Table {
 		cells:      make(map[ID]*Cell),
 		row:        -1,
 		col:        0,
+		colsFixed:  false,
 		nextCellID: 1,
 
 		// Initialize configuration
@@ -156,6 +143,16 @@ func (t *Table) AddCell(ct CellType, rowSpan, colSpan int, content string) *Tabl
 	return t
 }
 
+// Row creates a row slice for use with Simple.
+// Syntactic sugar for cleaner table construction.
+//
+// Example:
+//
+//	t := tbl.Simple(
+//	    tbl.Row("Name", "Age", "City"),
+//	    tbl.Row("Alice", "30", "NYC"),
+//	    tbl.Row("Bob", "25", "LA"),
+//	)
 func Row(cells ...string) []string {
 	return cells
 }
@@ -181,8 +178,8 @@ func Simple(rows ...[]string) *Table {
 	t := New()
 	for _, row := range rows {
 		t.AddRow()
-		for _, content := range row {
-			t.AddCell(Static, 1, 1, content)
+		for _, cell := range row {
+			t.AddCell(Static, 1, 1, cell)
 		}
 	}
 	return t
@@ -213,14 +210,3 @@ func (t *Table) Print() {
 func (t *Table) PrintDebug() string {
 	return t.printDebug()
 }
-
-// Row creates a row slice for use with Simple.
-// Syntactic sugar for cleaner table construction.
-//
-// Example:
-//
-//	t := tbl.Simple(
-//	    tbl.Row("Name", "Age", "City"),
-//	    tbl.Row("Alice", "30", "NYC"),
-//	    tbl.Row("Bob", "25", "LA"),
-//	)
