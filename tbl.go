@@ -92,11 +92,11 @@ func NewWithCols(cols int) *Table {
 	return t
 }
 
-// AddCol adds a column with width constraints.
+// AddCol adds a column with width constraints and optional styling.
 // Must be called before first AddRow().
 // Sets column count as fixed, but first row can still expand via flex cells.
 // Subsequent rows cannot expand beyond established column count.
-func (t *Table) AddCol(width, minWidth, maxWidth int) *Table {
+func (t *Table) AddCol(width, minWidth, maxWidth int, stylers ...Styler) *Table {
 	// Validate: no rows yet
 	if t.row >= 0 {
 		panic("tbl: cannot add columns after AddRow")
@@ -118,7 +118,14 @@ func (t *Table) AddCol(width, minWidth, maxWidth int) *Table {
 		panic(fmt.Sprintf("tbl: minWidth %d greater than maxWidth %d", minWidth, maxWidth))
 	}
 
+	col := t.g.Cols()
 	t.addCol(width, minWidth, maxWidth)
+
+	// Apply style if provided
+	if len(stylers) > 0 {
+		t.columnStyles[col] = t.columnStyles[col].Apply(stylers...)
+	}
+
 	return t
 }
 
@@ -158,29 +165,6 @@ func (t *Table) RenderTo(w io.Writer) error {
 	return err
 }
 
-// Print prints the rendered output to stdout.
-func (t *Table) Print() {
-	fmt.Print(t.Render())
-}
-
-// PrintDebug renders table structure in TBL Grid Notation format.
-// Shows grid layout with cell types and current cursor position.
-// Returns empty string if table has no rows.
-// For debug/development purposes.
-func (t *Table) PrintDebug() string {
-	return t.printDebug()
-}
-
-// Row creates a row slice for use with Simple.
-// Syntactic sugar for cleaner table construction.
-//
-// Example:
-//
-//	t := tbl.Simple(
-//	    tbl.Row("Name", "Age", "City"),
-//	    tbl.Row("Alice", "30", "NYC"),
-//	    tbl.Row("Bob", "25", "LA"),
-//	)
 func Row(cells ...string) []string {
 	return cells
 }
@@ -212,3 +196,27 @@ func Simple(rows ...[]string) *Table {
 	}
 	return t
 }
+
+// Print prints the rendered output to stdout.
+func (t *Table) Print() {
+	fmt.Print(t.Render())
+}
+
+// PrintDebug renders table structure in TBL Grid Notation format.
+// Shows grid layout with cell types and current cursor position.
+// Returns empty string if table has no rows.
+// For debug/development purposes.
+func (t *Table) PrintDebug() string {
+	return t.printDebug()
+}
+
+// Row creates a row slice for use with Simple.
+// Syntactic sugar for cleaner table construction.
+//
+// Example:
+//
+//	t := tbl.Simple(
+//	    tbl.Row("Name", "Age", "City"),
+//	    tbl.Row("Alice", "30", "NYC"),
+//	    tbl.Row("Bob", "25", "LA"),
+//	)

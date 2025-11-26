@@ -10,5 +10,5 @@ func main() {
 		tbl.Row("Widget", "$10.00", "100"),
 		tbl.Row("Gadget", "$25.50", "50"),
 		tbl.Row("Doohickey", "$5.99", "200"),
-	).BorderAll().Print()
+	).SetDefaultStyle(tbl.BAll()).Print()
 }

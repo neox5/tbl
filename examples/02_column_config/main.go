@@ -26,9 +26,7 @@ func main() {
 		AddCell(tbl.Static, 1, 1, "25").
 		AddCell(tbl.Static, 1, 1, "Designer")
 
-	t.SetRowStyle(0, tbl.CellStyle{
-		Border: tbl.Border{Sides: tbl.BorderBottom},
-	})
+	t.SetRowStyle(0, tbl.BBottom())
 
 	t.Print()
 }

@@ -39,8 +39,6 @@ func main() {
 	t.AddRow().
 		AddCell(tbl.Static, 1, 1, "Alice").
 		AddCell(tbl.Static, 1, 1, "Farmer").
-		AddCell(tbl.Static, 1, 1, "TEst").
-		AddCell(tbl.Static, 1, 1, "TEst2").
 		AddCell(tbl.Static, 1, 1, "Backend\nEngineer").
 		AddCell(tbl.Static, 1, 1, "Remote")
 
@@ -49,13 +47,7 @@ func main() {
 		AddCell(tbl.Flex, 1, 1, "Summary").
 		AddCell(tbl.Static, 1, 1, "END")
 
-	// t.BorderAll()
-	t.SetDefaultStyle(tbl.CellStyle{
-		Padding: tbl.Padding{Left: 1, Right: 1},
-		HAlign:  tbl.HAlignCenter,
-		VAlign:  tbl.VAlignMiddle,
-		Border:  tbl.Border{Sides: tbl.BorderAll},
-	})
+	t.SetDefaultStyle(tbl.Pad(0, 1), tbl.Center(), tbl.Middle(), tbl.BAll())
 
 	t.Print()
 }
