@@ -20,7 +20,7 @@ func main() {
 		{"David Brown", 28, "Seattle", 88500.25, true},
 	}
 
-	println("=== FromStructs Example ===")
+	println("=== AddRowsFromStructs Example ===")
 	println()
 
 	tbl.New().
@@ -28,6 +28,6 @@ func main() {
 		SetRowStyle(0, tbl.BBottom(), tbl.Center()).
 		SetColStyle(1, tbl.Right()). // Age
 		SetColStyle(3, tbl.Right()). // Salary
-		FromStructs(employees, "Name", "Age", "City", "Salary", "Active").
+		AddRowsFromStructs(employees, "Name", "Age", "City", "Salary", "Active").
 		Print()
 }

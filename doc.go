@@ -7,14 +7,35 @@
 //   - Configurable borders, padding, and alignment
 //   - Dynamic column resolution
 //
-// Basic usage:
+// Usage Patterns:
+//
+// 1. Simple tables (helper function):
+//
+//	tbl.Simple(
+//	    tbl.Row("Name", "Age"),
+//	    tbl.Row("Alice", "30"),
+//	).SetDefaultStyle(tbl.BAll()).Print()
+//
+// 2. Advanced tables (builder with IDs):
 //
 //	t := tbl.New()
-//	t.AddRow().
-//	    AddCell(tbl.Static, 1, 1, "Name").
-//	    AddCell(tbl.Static, 1, 1, "Age")
-//	t.AddRow().
-//	    AddCell(tbl.Static, 1, 1, "Alice").
-//	    AddCell(tbl.Static, 1, 1, "30")
+//	headerRow := t.AddRow()
+//	t.AddCell(tbl.Static, 1, 1, "Name")
+//	ageCell := t.AddCell(tbl.Static, 1, 1, "Age")
+//
+//	t.AddRow()
+//	t.AddCell(tbl.Static, 1, 1, "Alice")
+//	t.AddCell(tbl.Static, 1, 1, "30")
+//
+//	t.SetRowStyle(headerRow, tbl.BBottom())
+//	t.SetCellStyle(ageCell, tbl.Right())
+//	t.Print()
+//
+// 3. Bulk operations (struct data):
+//
+//	employees := []Employee{...}
+//	t := tbl.New()
+//	t.AddRowsFromStructs(employees, "Name", "Age", "Salary")
+//	t.SetRowStyle(0, tbl.BBottom()) // header
 //	t.Print()
 package tbl

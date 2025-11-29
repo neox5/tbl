@@ -33,7 +33,7 @@ type Table struct {
 	cellStyles   map[ID]CellStyle
 
 	// Programmable style hook
-	funcStyler Funcstyler
+	styleFunc Funcstyler
 }
 
 // New creates a new Table with zero columns (dynamic sizing).
@@ -81,10 +81,11 @@ func NewWithCols(cols int) *Table {
 }
 
 // AddCol adds a column with width constraints and optional styling.
+// Returns the column index.
 // Must be called before first AddRow().
 // Sets column count as fixed, but first row can still expand via flex cells.
 // Subsequent rows cannot expand beyond established column count.
-func (t *Table) AddCol(width, minWidth, maxWidth int, stylers ...Freestyler) *Table {
+func (t *Table) AddCol(width, minWidth, maxWidth int, stylers ...Freestyler) int {
 	// Validate: no rows yet
 	if t.row >= 0 {
 		panic("tbl: cannot add columns after AddRow")
@@ -117,20 +118,22 @@ func (t *Table) AddCol(width, minWidth, maxWidth int, stylers ...Freestyler) *Ta
 		t.columnStyles[col] = t.columnStyles[col].Apply(stylers...)
 	}
 
-	return t
+	return col
 }
 
 // AddRow advances to next row with validation and cursor positioning.
-func (t *Table) AddRow() *Table {
+// Returns the row index.
+func (t *Table) AddRow() int {
 	t.addRow()
-	return t
+	return t.row
 }
 
 // AddCell adds a cell at cursor position with specified type and span.
+// Returns the cell ID.
 // Expands columns if needed (when not fixed). Validates span fits in grid.
 // Panics if: no row active, span invalid, insufficient columns (when fixed),
 // or space occupied.
-func (t *Table) AddCell(ct CellType, rowSpan, colSpan int, content string) *Table {
+func (t *Table) AddCell(ct CellType, rowSpan, colSpan int, content string) ID {
 	if rowSpan <= 0 || colSpan <= 0 {
 		panic(fmt.Sprintf("tbl: invalid span rowSpan=%d colSpan=%d at cursor (%d,%d)", rowSpan, colSpan, t.row, t.col))
 	}
@@ -139,8 +142,9 @@ func (t *Table) AddCell(ct CellType, rowSpan, colSpan int, content string) *Tabl
 		panic(fmt.Sprintf("tbl: no row to add cell at cursor (%d,%d)", t.row, t.col))
 	}
 
+	id := t.nextCellID
 	t.addCell(ct, rowSpan, colSpan, content)
-	return t
+	return id
 }
 
 // Row creates a row slice for use with Simple.

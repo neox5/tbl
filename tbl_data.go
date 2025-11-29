@@ -5,7 +5,7 @@ import (
 	"reflect"
 )
 
-// FromStructs populates table from struct slice.
+// AddRowsFromStructs populates table from struct slice.
 // Extracts fields by name in specified order.
 // First row becomes header (field names).
 //
@@ -16,11 +16,11 @@ import (
 //	    Age  int
 //	}
 //	people := []Person{{"Alice", 30}, {"Bob", 25}}
-//	t := tbl.New().FromStructs(people, "Name", "Age")
-func (t *Table) FromStructs(data interface{}, fields ...string) *Table {
+//	t := tbl.New().AddRowsFromStructs(people, "Name", "Age")
+func (t *Table) AddRowsFromStructs(data interface{}, fields ...string) *Table {
 	v := reflect.ValueOf(data)
 	if v.Kind() != reflect.Slice {
-		panic("tbl: FromStructs requires slice")
+		panic("tbl: AddRowsFromStructs requires slice")
 	}
 
 	if v.Len() == 0 {
@@ -33,7 +33,7 @@ func (t *Table) FromStructs(data interface{}, fields ...string) *Table {
 		elem = elem.Elem()
 	}
 	if elem.Kind() != reflect.Struct {
-		panic("tbl: FromStructs requires slice of structs")
+		panic("tbl: AddRowsFromStructs requires slice of structs")
 	}
 
 	// Add header row

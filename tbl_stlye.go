@@ -39,12 +39,12 @@ func (t *Table) SetRowStyle(row int, stylers ...Freestyler) *Table {
 	return t
 }
 
-// SetFuncStyle sets the programmable style resolver for all cells.
+// SetStyleFunc sets the programmable style resolver for all cells.
 //
 // The Funcstyler is evaluated after default, column, and row styles and
 // before cell-specific styles in resolveStyle.
-func (t *Table) SetFuncStyle(fn Funcstyler) *Table {
-	t.funcStyler = fn
+func (t *Table) SetStyleFunc(fn Funcstyler) *Table {
+	t.styleFunc = fn
 	return t
 }
 
@@ -60,7 +60,7 @@ func (t *Table) SetCellStyle(id ID, stylers ...Freestyler) *Table {
 }
 
 // resolveStyle returns effective style for cell using hierarchy.
-// Resolution order: defaultStyle < columnStyles < rowStyles < cellStyles
+// Resolution order: defaultStyle < columnStyles < rowStyles < styleFunc < cellStyles
 // Only considers cell origin position (cell.r, cell.c) for multi-span cells.
 func (t *Table) resolveStyle(cell *Cell) CellStyle {
 	style := t.defaultStyle
@@ -76,8 +76,8 @@ func (t *Table) resolveStyle(cell *Cell) CellStyle {
 	}
 
 	// Programmable style at origin
-	if t.funcStyler != nil {
-		fs := t.funcStyler(cell.r, cell.c)
+	if t.styleFunc != nil {
+		fs := t.styleFunc(cell.r, cell.c)
 		if fs.Template != (CharTemplate{}) {
 			panic("tbl: CharTemplate only supported via SetDefaultStyle")
 		}

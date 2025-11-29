@@ -1,4 +1,3 @@
-// example/funcstyler/main.go
 package main
 
 import (
@@ -15,47 +14,47 @@ func main() {
 	t := tbl.NewWithCols(cols)
 
 	// Header
-	t.AddRow().
-		AddCell(tbl.Static, 1, 1, "Item").
-		AddCell(tbl.Static, 1, 1, "Qty").
-		AddCell(tbl.Static, 1, 1, "Price")
+	t.AddRow()
+	t.AddCell(tbl.Static, 1, 1, "Item")
+	t.AddCell(tbl.Static, 1, 1, "Qty")
+	t.AddCell(tbl.Static, 1, 1, "Price")
 
 	// Content rows
-	t.AddRow().
-		AddCell(tbl.Static, 1, 1, "Apples").
-		AddCell(tbl.Static, 1, 1, "10").
-		AddCell(tbl.Static, 1, 1, "$2.50")
+	t.AddRow()
+	t.AddCell(tbl.Static, 1, 1, "Apples")
+	t.AddCell(tbl.Static, 1, 1, "10")
+	t.AddCell(tbl.Static, 1, 1, "$2.50")
 
-	t.AddRow().
-		AddCell(tbl.Static, 1, 1, "Bananas").
-		AddCell(tbl.Static, 1, 1, "5").
-		AddCell(tbl.Static, 1, 1, "$3.10")
+	t.AddRow()
+	t.AddCell(tbl.Static, 1, 1, "Bananas")
+	t.AddCell(tbl.Static, 1, 1, "5")
+	t.AddCell(tbl.Static, 1, 1, "$3.10")
 
-	t.AddRow().
-		AddCell(tbl.Static, 1, 1, "Oranges").
-		AddCell(tbl.Static, 1, 1, "8").
-		AddCell(tbl.Static, 1, 1, "$4.00")
+	t.AddRow()
+	t.AddCell(tbl.Static, 1, 1, "Oranges")
+	t.AddCell(tbl.Static, 1, 1, "8")
+	t.AddCell(tbl.Static, 1, 1, "$4.00")
 
 	// Footer
-	t.AddRow().
-		AddCell(tbl.Static, 1, 1, "Total").
-		AddCell(tbl.Static, 1, 1, "23").
-		AddCell(tbl.Static, 1, 1, "$9.60")
+	t.AddRow()
+	t.AddCell(tbl.Static, 1, 1, "Total")
+	t.AddCell(tbl.Static, 1, 1, "23")
+	t.AddCell(tbl.Static, 1, 1, "$9.60")
 
 	// Column styles for alignment: labels left, numbers right
-	t.SetColStyle(0, tbl.Left()).
-		SetColStyle(1, tbl.Right()).
-		SetColStyle(2, tbl.Right())
+	t.SetColStyle(0, tbl.Left())
+	t.SetColStyle(1, tbl.Right())
+	t.SetColStyle(2, tbl.Right())
 
-	// Default: no borders; Funcstyler defines all borders.
+	// Default: no borders; SetStyleFunc defines all borders.
 	t.SetDefaultStyle(tbl.Pad(0, 1), tbl.BNone())
 
 	lastCol := cols - 1
 
-	// Funcstyler controls border shape:
+	// SetStyleFunc controls border shape:
 	// - header and footer: full border
 	// - content rows: only table borders left and right, no column separation
-	t.SetFuncStyle(func(row, col int) tbl.CellStyle {
+	t.SetStyleFunc(func(row, col int) tbl.CellStyle {
 		style := tbl.CellStyle{}
 
 		switch {
