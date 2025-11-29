@@ -359,6 +359,6 @@ func (r *renderer) buildCellLayouts() {
 		totalHeight := r.cellHeight(cell)
 
 		// Generate complete lines with padding
-		r.cellLayouts[cell.id] = cell.Layout(totalWidth, totalHeight, style)
+		r.cellLayouts[cell.id] = cell.layout(totalWidth, totalHeight, style)
 	}
 }

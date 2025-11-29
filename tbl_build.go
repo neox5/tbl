@@ -269,11 +269,6 @@ func (t *Table) finalize() {
 		panic("tbl: empty table")
 	}
 
-	// Check if cursor at start of row - empty row added
-	if t.col == 0 {
-		panic(fmt.Sprintf("tbl: empty last row %d\n%s", t.row, t.PrintDebug()))
-	}
-
 	// Check if last row complete
 	if !t.isRowComplete(t.row) {
 		t.finalizeLastRow()

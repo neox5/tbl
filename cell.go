@@ -132,11 +132,13 @@ func (c *Cell) AddedSpan() int {
 func (c *Cell) Content() string { return c.content }
 
 // Width returns the required character width of the cell content (unconstrained).
+// Uses visual length calculation (strips ANSI escape codes).
 func (c *Cell) Width() int {
 	var width int
 	for _, l := range c.rawLines {
-		if len(l) > width {
-			width = len(l)
+		visualLen := visualLength(l)
+		if visualLen > width {
+			width = visualLen
 		}
 	}
 	return width

@@ -1,8 +1,27 @@
 package tbl
 
-import "strings"
+import (
+	"regexp"
+	"strings"
+	"unicode/utf8"
+)
 
-// Layout formats cell content within given constraints.
+var ansiRegex = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+
+// stripAnsiCodes removes ANSI escape sequences from string.
+// Used for visual width calculation while preserving formatting in output.
+func stripAnsiCodes(s string) string {
+	return ansiRegex.ReplaceAllString(s, "")
+}
+
+// visualLength returns the visible character count of a string.
+// Strips ANSI escape sequences and counts runes (not bytes).
+func visualLength(s string) int {
+	stripped := stripAnsiCodes(s)
+	return utf8.RuneCountInString(stripped)
+}
+
+// layout formats cell content within given constraints.
 // Returns complete lines with padding and alignment applied.
 // width and height include padding space.
 //
@@ -12,7 +31,7 @@ import "strings"
 //  3. Apply horizontal alignment to each line
 //  4. Apply vertical alignment (padding/truncation to height)
 //  5. Add horizontal padding to each line
-func (c *Cell) Layout(width, height int, style CellStyle) []string {
+func (c *Cell) layout(width, height int, style CellStyle) []string {
 	if width <= 0 || height <= 0 {
 		return []string{}
 	}
@@ -76,6 +95,7 @@ func (c *Cell) Layout(width, height int, style CellStyle) []string {
 // Respects explicit line breaks (\n) in content.
 // Words longer than width are truncated with ellipsis.
 // Returns lines without padding (natural word wrap boundaries).
+// Uses visual length for width calculation (strips ANSI codes, counts runes).
 func buildRawLines(content string, width int) []string {
 	if width <= 0 || content == "" {
 		return []string{""}
@@ -99,7 +119,7 @@ func buildRawLines(content string, width int) []string {
 
 		for _, w := range words {
 			// Long word → flush current, add truncated word
-			if len(w) > width {
+			if visualLength(w) > width {
 				if l.Len() > 0 {
 					lines = append(lines, l.String())
 					l.Reset()
@@ -109,11 +129,11 @@ func buildRawLines(content string, width int) []string {
 			}
 
 			// Check if word fits on current line
-			need := l.Len()
+			need := visualLength(l.String())
 			if need > 0 {
 				need++ // space
 			}
-			need += len(w)
+			need += visualLength(w)
 
 			// Doesn't fit → flush current line, start new
 			if need > width {
@@ -140,6 +160,7 @@ func buildRawLines(content string, width int) []string {
 // buildRawLinesChar converts content into lines that fit width using character wrapping.
 // Wraps at any character boundary, ignoring word boundaries.
 // Respects explicit line breaks (\n) in content.
+// Uses visual length for width calculation (strips ANSI codes, counts runes).
 func buildRawLinesChar(content string, width int) []string {
 	if width <= 0 || content == "" {
 		return []string{""}
@@ -158,22 +179,61 @@ func buildRawLinesChar(content string, width int) []string {
 		}
 
 		// Wrap at character boundaries
+		// Note: Cannot use simple byte-slice indexing with ANSI codes
+		// Must preserve ANSI sequences while measuring visual length
 		for len(seg) > 0 {
-			if len(seg) <= width {
+			if visualLength(seg) <= width {
 				lines = append(lines, seg)
 				break
 			}
-			lines = append(lines, seg[:width])
-			seg = seg[width:]
+
+			// Find break point that fits width visually
+			breakPoint := findVisualBreakpoint(seg, width)
+			lines = append(lines, seg[:breakPoint])
+			seg = seg[breakPoint:]
 		}
 	}
 
 	return lines
 }
 
+// findVisualBreakpoint finds byte index where visual length reaches target width.
+// Preserves ANSI escape sequences and counts runes (not bytes).
+func findVisualBreakpoint(s string, width int) int {
+	visualLen := 0
+	bytePos := 0
+
+	for bytePos < len(s) {
+		// Check for ANSI escape sequence
+		if bytePos < len(s) && s[bytePos] == '\x1b' {
+			// Find end of ANSI sequence
+			endPos := bytePos + 1
+			for endPos < len(s) && s[endPos] != 'm' {
+				endPos++
+			}
+			if endPos < len(s) {
+				endPos++ // include 'm'
+			}
+			bytePos = endPos
+			continue
+		}
+
+		// Regular character - decode rune
+		_, size := utf8.DecodeRuneInString(s[bytePos:])
+		visualLen++
+		if visualLen > width {
+			return bytePos
+		}
+		bytePos += size
+	}
+
+	return bytePos
+}
+
 // buildRawLinesTruncate converts content into lines, truncating overflow with ellipsis.
 // Each line from explicit breaks (\n) is truncated independently.
 // No wrapping occurs - content exceeding width is cut off.
+// Uses visual length for width calculation (strips ANSI codes, counts runes).
 func buildRawLinesTruncate(content string, width int) []string {
 	if width <= 0 || content == "" {
 		return []string{""}
@@ -192,7 +252,7 @@ func buildRawLinesTruncate(content string, width int) []string {
 		}
 
 		// Truncate if too long
-		if len(seg) > width {
+		if visualLength(seg) > width {
 			seg = truncateWithEllipsis(seg, width)
 		}
 
@@ -204,16 +264,18 @@ func buildRawLinesTruncate(content string, width int) []string {
 
 // applyHAlign applies horizontal alignment to each line.
 // Pads lines to target width with spaces.
+// Uses visual length for alignment calculation (strips ANSI codes, counts runes).
 func applyHAlign(lines []string, width int, align HAlign) []string {
 	result := make([]string, len(lines))
 
 	for i, line := range lines {
-		if len(line) >= width {
+		visualLen := visualLength(line)
+		if visualLen >= width {
 			result[i] = line
 			continue
 		}
 
-		pad := width - len(line)
+		pad := width - visualLen
 		var lPad, rPad int
 
 		switch align {
@@ -275,11 +337,15 @@ func applyVAlign(lines []string, width, height int, align VAlign) []string {
 
 // truncateWithEllipsis shortens text to fit width with ellipsis.
 // Ellipsis length adapts to width: "..." (≥3), ".." (2), "." (1), "" (0).
+// Preserves ANSI codes in truncated portion, adds ellipsis at visual breakpoint.
+// Counts runes (not bytes) for visual width.
 func truncateWithEllipsis(text string, width int) string {
 	if width <= 0 {
 		return ""
 	}
-	if len(text) <= width {
+
+	visualLen := visualLength(text)
+	if visualLen <= width {
 		return text
 	}
 
@@ -292,7 +358,9 @@ func truncateWithEllipsis(text string, width int) string {
 		ellipsis = ".."
 	}
 
-	// Truncate to fit
-	cutLen := max(0, width-len(ellipsis))
-	return text[:cutLen] + ellipsis
+	// Find breakpoint for visual width minus ellipsis
+	targetWidth := max(0, width-len(ellipsis))
+
+	breakPoint := findVisualBreakpoint(text, targetWidth)
+	return text[:breakPoint] + ellipsis
 }
