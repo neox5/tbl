@@ -121,10 +121,22 @@ func (t *Table) AddCol(width, minWidth, maxWidth int, stylers ...Freestyler) int
 	return col
 }
 
-// AddRow advances to next row with validation and cursor positioning.
+// AddRow advances to next row and optionally adds cells.
 // Returns the row index.
-func (t *Table) AddRow() int {
-	t.addRow()
+// No args: advances cursor only (compatible with explicit AddCell calls).
+// With args: advances cursor and adds cells left-to-right.
+//
+// Example with CellSpec:
+//
+//	t.AddRow(tbl.C("Name"), tbl.C("Age"), tbl.F("Bio"))
+//	t.AddRow(tbl.Cx(2, 1, "Merged"), tbl.C("30"), tbl.C("Engineer"))
+//
+// Example without args (current behavior):
+//
+//	t.AddRow()
+//	t.AddCell(tbl.Static, 1, 1, "Data")
+func (t *Table) AddRow(specs ...CellSpec) int {
+	t.addRow(specs...)
 	return t.row
 }
 

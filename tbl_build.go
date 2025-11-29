@@ -24,7 +24,8 @@ func (t *Table) addCol(width, minWidth, maxWidth int) {
 
 // addRow advances to next row with validation and cursor positioning.
 // Internal implementation for AddRow().
-func (t *Table) addRow() {
+// When specs provided, adds cells after advancing row.
+func (t *Table) addRow(specs ...CellSpec) {
 	// Validate previous row if not first row
 	if t.row >= 0 {
 		if !t.isRowComplete(t.row) {
@@ -47,6 +48,26 @@ func (t *Table) addRow() {
 
 	// Advance to next row
 	t.nextRow()
+
+	// Add cells if specs provided
+	for _, spec := range specs {
+		t.addCellFromSpec(spec)
+	}
+}
+
+// addCellFromSpec adds cell from CellSpec and applies inline styles.
+func (t *Table) addCellFromSpec(spec CellSpec) {
+	// Add cell
+	id := t.nextCellID
+	t.addCell(spec.typ, spec.rSpan, spec.cSpan, spec.content)
+
+	// Apply inline styles if present
+	if len(spec.stylers) > 0 {
+		if containsTemplate(spec.stylers) {
+			panic("tbl: CharTemplate only supported via SetDefaultStyle")
+		}
+		t.cellStyles[id] = t.cellStyles[id].Apply(spec.stylers...)
+	}
 }
 
 // addCell adds a cell at cursor position with specified type and span.

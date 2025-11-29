@@ -14,32 +14,15 @@ func main() {
 	t := tbl.NewWithCols(cols)
 
 	// Header
-	t.AddRow()
-	t.AddCell(tbl.Static, 1, 1, "Item")
-	t.AddCell(tbl.Static, 1, 1, "Qty")
-	t.AddCell(tbl.Static, 1, 1, "Price")
+	t.AddRow(tbl.C("Item"), tbl.C("Qty"), tbl.C("Price"))
 
 	// Content rows
-	t.AddRow()
-	t.AddCell(tbl.Static, 1, 1, "Apples")
-	t.AddCell(tbl.Static, 1, 1, "10")
-	t.AddCell(tbl.Static, 1, 1, "$2.50")
-
-	t.AddRow()
-	t.AddCell(tbl.Static, 1, 1, "Bananas")
-	t.AddCell(tbl.Static, 1, 1, "5")
-	t.AddCell(tbl.Static, 1, 1, "$3.10")
-
-	t.AddRow()
-	t.AddCell(tbl.Static, 1, 1, "Oranges")
-	t.AddCell(tbl.Static, 1, 1, "8")
-	t.AddCell(tbl.Static, 1, 1, "$4.00")
+	t.AddRow(tbl.C("Apples"), tbl.C("10"), tbl.C("$2.50"))
+	t.AddRow(tbl.C("Bananas"), tbl.C("5"), tbl.C("$3.10"))
+	t.AddRow(tbl.C("Oranges"), tbl.C("8"), tbl.C("$4.00"))
 
 	// Footer
-	t.AddRow()
-	t.AddCell(tbl.Static, 1, 1, "Total")
-	t.AddCell(tbl.Static, 1, 1, "23")
-	t.AddCell(tbl.Static, 1, 1, "$9.60")
+	t.AddRow(tbl.C("Total"), tbl.C("23"), tbl.C("$9.60"))
 
 	// Column styles for alignment: labels left, numbers right
 	t.SetColStyle(0, tbl.Left())
@@ -49,7 +32,7 @@ func main() {
 	// Default: no borders; SetStyleFunc defines all borders.
 	t.SetDefaultStyle(tbl.Pad(0, 1), tbl.BNone())
 
-	lastCol := cols - 1
+	const lastCol = cols - 1
 
 	// SetStyleFunc controls border shape:
 	// - header and footer: full border
@@ -57,17 +40,18 @@ func main() {
 	t.SetStyleFunc(func(row, col int) tbl.CellStyle {
 		style := tbl.CellStyle{}
 
-		switch {
-		case row == headerRow || row == footerRow:
+		switch row {
+		case headerRow, footerRow:
 			// Header and footer: full border around all cells
 			style.Border = tbl.BAll()
-		case row > headerRow && row < footerRow:
+		default:
 			// Content rows: only outer table borders on left and right
-			if col == 0 {
+			switch col {
+			case 0:
 				style.Border = tbl.BLeft()
-			} else if col == lastCol {
+			case lastCol:
 				style.Border = tbl.BRight()
-			} else {
+			default:
 				style.Border = tbl.BNone()
 			}
 		}

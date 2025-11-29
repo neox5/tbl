@@ -13,6 +13,76 @@ const (
 	Flex
 )
 
+// CellSpec specifies cell parameters for deferred construction.
+type CellSpec struct {
+	typ          CellType
+	rSpan, cSpan int
+	content      string
+	stylers      []Freestyler
+}
+
+// C creates Static cell spec with content and optional styles.
+// Default span: [1,1]
+//
+// Example:
+//
+//	t.AddRow(tbl.C("Name"), tbl.C("Age", tbl.Right()))
+func C(content string, stylers ...Freestyler) CellSpec {
+	return CellSpec{
+		typ:     Static,
+		rSpan:   1,
+		cSpan:   1,
+		content: content,
+		stylers: stylers,
+	}
+}
+
+// F creates Flex cell spec with content and optional styles.
+// Default span: [1,1]
+//
+// Example:
+//
+//	t.AddRow(tbl.F("Bio"), tbl.C("Age"))
+func F(content string, stylers ...Freestyler) CellSpec {
+	return CellSpec{
+		typ:     Flex,
+		rSpan:   1,
+		cSpan:   1,
+		content: content,
+		stylers: stylers,
+	}
+}
+
+// Cx creates Static cell spec with custom span, content and optional styles.
+//
+// Example:
+//
+//	t.AddRow(tbl.Cx(2, 1, "Merged Cell"), tbl.C("Normal"))
+func Cx(rSpan, cSpan int, content string, stylers ...Freestyler) CellSpec {
+	return CellSpec{
+		typ:     Static,
+		rSpan:   rSpan,
+		cSpan:   cSpan,
+		content: content,
+		stylers: stylers,
+	}
+}
+
+// Fx creates Flex cell spec with custom span, content and optional styles.
+//
+// Example:
+//
+//	t.AddRow(tbl.Fx(1, 2, "Wide Flex"), tbl.C("Normal"))
+func Fx(rSpan, cSpan int, content string, stylers ...Freestyler) CellSpec {
+	return CellSpec{
+		typ:     Flex,
+		rSpan:   rSpan,
+		cSpan:   cSpan,
+		content: content,
+		stylers: stylers,
+	}
+}
+
 // Cell represents a table cell with position, span and content information.
 type Cell struct {
 	id           ID

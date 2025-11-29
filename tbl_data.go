@@ -17,7 +17,7 @@ import (
 //	}
 //	people := []Person{{"Alice", 30}, {"Bob", 25}}
 //	t := tbl.New().AddRowsFromStructs(people, "Name", "Age")
-func (t *Table) AddRowsFromStructs(data interface{}, fields ...string) *Table {
+func (t *Table) AddRowsFromStructs(data any, fields ...string) *Table {
 	v := reflect.ValueOf(data)
 	if v.Kind() != reflect.Slice {
 		panic("tbl: AddRowsFromStructs requires slice")
@@ -29,7 +29,7 @@ func (t *Table) AddRowsFromStructs(data interface{}, fields ...string) *Table {
 
 	// Validate first element is struct
 	elem := v.Index(0)
-	if elem.Kind() == reflect.Ptr {
+	if elem.Kind() == reflect.Pointer {
 		elem = elem.Elem()
 	}
 	if elem.Kind() != reflect.Struct {
@@ -45,7 +45,7 @@ func (t *Table) AddRowsFromStructs(data interface{}, fields ...string) *Table {
 	// Add data rows
 	for i := 0; i < v.Len(); i++ {
 		item := v.Index(i)
-		if item.Kind() == reflect.Ptr {
+		if item.Kind() == reflect.Pointer {
 			item = item.Elem()
 		}
 

@@ -14,21 +14,10 @@ func main() {
 	t.AddCol(0, 15, 20) // Mode column
 	t.AddCol(0, 30, 40) // Content column
 
-	t.AddRow()
-	t.AddCell(tbl.Static, 1, 1, "Mode")
-	t.AddCell(tbl.Static, 1, 1, "Behavior")
-
-	t.AddRow()
-	t.AddCell(tbl.Static, 1, 1, "WrapWord")
-	t.AddCell(tbl.Static, 1, 1, longText)
-
-	t.AddRow()
-	t.AddCell(tbl.Static, 1, 1, "WrapChar")
-	t.AddCell(tbl.Static, 1, 1, longText)
-
-	t.AddRow()
-	t.AddCell(tbl.Static, 1, 1, "WrapTruncate")
-	t.AddCell(tbl.Static, 1, 1, longText)
+	t.AddRow(tbl.C("Mode"), tbl.C("Behavior"))
+	t.AddRow(tbl.C("WrapWord"), tbl.C(longText))
+	t.AddRow(tbl.C("WrapChar"), tbl.C(longText))
+	t.AddRow(tbl.C("WrapTruncate"), tbl.C(longText))
 
 	t.SetDefaultStyle(tbl.BAll())
 	t.SetRowStyle(0, tbl.BBottom(), tbl.Center())

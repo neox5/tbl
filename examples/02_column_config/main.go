@@ -11,20 +11,9 @@ func main() {
 	t.AddCol(7, 0, 0)  // Age: fixed width 7
 	t.AddCol(0, 0, 20) // Bio: maxWidth 20, auto width
 
-	t.AddRow()
-	t.AddCell(tbl.Static, 1, 1, "Name")
-	t.AddCell(tbl.Static, 1, 1, "Age")
-	t.AddCell(tbl.Static, 1, 1, "Bio")
-
-	t.AddRow()
-	t.AddCell(tbl.Static, 1, 1, "Alice")
-	t.AddCell(tbl.Static, 1, 1, "30")
-	t.AddCell(tbl.Static, 1, 1, "Software engineer with 10 years of experience")
-
-	t.AddRow()
-	t.AddCell(tbl.Static, 1, 1, "Bob")
-	t.AddCell(tbl.Static, 1, 1, "25")
-	t.AddCell(tbl.Static, 1, 1, "Designer")
+	t.AddRow(tbl.C("Name"), tbl.C("Age"), tbl.C("Bio"))
+	t.AddRow(tbl.C("Alice"), tbl.C("30"), tbl.C("Software engineer with 10 years of experience"))
+	t.AddRow(tbl.C("Bob"), tbl.C("25"), tbl.C("Designer"))
 
 	t.SetRowStyle(0, tbl.BBottom())
 

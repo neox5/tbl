@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Simple Table Example ===")
+	fmt.Println("=== Flex Table Example ===")
 	fmt.Println()
 
 	t := tbl.New()
@@ -30,22 +30,25 @@ func main() {
 	}()
 
 	// Row 0: Flex cells (will expand)
-	t.AddRow()
-	t.AddCell(tbl.Static, 2, 1, "tbl")
-	t.AddCell(tbl.Flex, 1, 1, "Name\nSurname")
-	t.AddCell(tbl.Flex, 1, 1, "Role")
+	t.AddRow(
+		tbl.Cx(2, 1, "tbl"),
+		tbl.F("Name\nSurname"),
+		tbl.F("Role"),
+	)
 
 	// Row 1: Static cells with different structure
-	t.AddRow()
-	t.AddCell(tbl.Static, 1, 1, "Alice")
-	t.AddCell(tbl.Static, 1, 1, "Farmer")
-	t.AddCell(tbl.Static, 1, 1, "Backend\nEngineer")
-	t.AddCell(tbl.Static, 1, 1, "Remote")
+	t.AddRow(
+		tbl.C("Alice"),
+		tbl.C("Farmer"),
+		tbl.C("Backend\nEngineer"),
+		tbl.C("Remote"),
+	)
 
 	// Row 2: Full span summary cells
-	t.AddRow()
-	t.AddCell(tbl.Flex, 1, 1, "Summary")
-	t.AddCell(tbl.Static, 1, 1, "END")
+	t.AddRow(
+		tbl.F("Summary"),
+		tbl.C("END"),
+	)
 
 	t.SetDefaultStyle(tbl.Pad(0, 1), tbl.Center(), tbl.Middle(), tbl.BAll())
 
