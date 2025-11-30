@@ -42,8 +42,8 @@ func (t *Table) SetRowStyle(row int, stylers ...Freestyler) *Table {
 // SetStyleFunc sets the programmable style resolver(s) for cells.
 //
 // Functions are composed left-to-right: later functions override earlier ones
-// via CellStyle.merge(). Each function receives cell origin position (row, col)
-// and table dimensions (rowCount, colCount).
+// via CellStyle.merge(). Each function receives StyleContext with cell origin
+// position, table dimensions, and cell content.
 //
 // Composition semantics:
 //   - Functions evaluated in order: fn1, fn2, fn3, ...
@@ -51,7 +51,7 @@ func (t *Table) SetRowStyle(row int, stylers ...Freestyler) *Table {
 //   - Non-zero values in later styles override earlier ones
 //
 // Multi-span cells:
-//   - Only cell origin position (cell.r, cell.c) is evaluated
+//   - Only cell origin position is evaluated
 //   - Spanning cells do NOT trigger functions for covered positions
 //
 // Resolution order:
@@ -65,10 +65,21 @@ func (t *Table) SetRowStyle(row int, stylers ...Freestyler) *Table {
 //	    tbl.EvenRowsSkipN(1, tbl.Pad(1)),
 //	)
 //
+// Example - Content-based styling:
+//
+//	negative := func(ctx tbl.StyleContext) bool {
+//	    val, err := strconv.ParseFloat(ctx.Content, 64)
+//	    return err == nil && val < 0
+//	}
+//	t.SetStyleFunc(
+//	    tbl.FirstRow(tbl.BBottom()),
+//	    tbl.Predicate(negative, tbl.Red()),
+//	)
+//
 // Example - Custom predicate:
 //
-//	isSpecialRow := func(row, col, _, _ int) bool {
-//	    return row%5 == 0 && row > 0
+//	isSpecialRow := func(ctx tbl.StyleContext) bool {
+//	    return ctx.Row%5 == 0 && ctx.Row > 0
 //	}
 //	t.SetStyleFunc(
 //	    tbl.FirstRow(tbl.BBottom()),
@@ -98,11 +109,11 @@ func composeFuncstylers(fns ...Funcstyler) Funcstyler {
 		return nil
 	}
 
-	return func(row, col, rowCount, colCount int) CellStyle {
+	return func(ctx StyleContext) CellStyle {
 		style := CellStyle{}
 		for _, fn := range fns {
 			if fn != nil {
-				applied := fn(row, col, rowCount, colCount)
+				applied := fn(ctx)
 				style = style.merge(applied)
 			}
 		}
@@ -112,7 +123,7 @@ func composeFuncstylers(fns ...Funcstyler) Funcstyler {
 
 // resolveStyle returns effective style for cell using hierarchy.
 // Resolution order: defaultStyle < columnStyles < rowStyles < styleFunc < cellStyles
-// Only considers cell origin position (cell.r, cell.c) for multi-span cells.
+// Only considers cell origin position for multi-span cells.
 func (t *Table) resolveStyle(cell *Cell) CellStyle {
 	style := t.defaultStyle
 
@@ -128,7 +139,14 @@ func (t *Table) resolveStyle(cell *Cell) CellStyle {
 
 	// Programmable style at origin
 	if t.styleFunc != nil {
-		fs := t.styleFunc(cell.r, cell.c, t.g.Rows(), t.g.Cols())
+		ctx := StyleContext{
+			Row:      cell.r,
+			Col:      cell.c,
+			RowCount: t.g.Rows(),
+			ColCount: t.g.Cols(),
+			Content:  cell.content,
+		}
+		fs := t.styleFunc(ctx)
 		if fs.Template != (CharTemplate{}) {
 			panic("tbl: CharTemplate only supported via SetDefaultStyle")
 		}

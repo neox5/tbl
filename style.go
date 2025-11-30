@@ -7,10 +7,16 @@ type Freestyler interface {
 	Style(base CellStyle) CellStyle
 }
 
-// Funcstyler computes a CellStyle for a given cell position.
+// StyleContext provides cell information for style resolution.
+type StyleContext struct {
+	Row, Col           int    // Cell origin position
+	RowCount, ColCount int    // Table dimensions
+	Content            string // Cell content (empty for non-origin positions)
+}
+
+// Funcstyler computes a CellStyle from context.
 // The returned style is merged into the resolved style for the cell.
-// Parameters: row, col (cell position), rowCount, colCount (table dimensions)
-type Funcstyler func(row, col, rowCount, colCount int) CellStyle
+type Funcstyler func(ctx StyleContext) CellStyle
 
 // WrapMode controls how content overflow is handled.
 type WrapMode int
