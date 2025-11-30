@@ -66,7 +66,23 @@ func (s CellStyle) Style(base CellStyle) CellStyle {
 
 // merge applies non-zero overrides from other style to this style.
 // Returns new CellStyle with merged values.
-// Zero values in override are ignored (base value preserved).
+//
+// Merge semantics:
+//   - Zero values in override are ignored (base value preserved)
+//   - Non-zero values in override replace base values
+//   - Applies to all fields: Padding, HAlign, VAlign, Border, WrapMode, Template
+//
+// Used by:
+//   - Style resolution hierarchy (default < column < row < styleFunc < cell)
+//   - Funcstyler composition (fn1.merge(fn2).merge(fn3))
+//
+// Example:
+//
+//	base := CellStyle{Padding: Pad(1), HAlign: Left}
+//	override := CellStyle{Padding: Pad(2)}           // Only padding set
+//	result := base.merge(override)
+//	// result.Padding = Pad(2)  (overridden)
+//	// result.HAlign = Left     (preserved from base)
 func (s CellStyle) merge(other CellStyle) CellStyle {
 	result := s
 

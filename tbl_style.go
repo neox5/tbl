@@ -39,12 +39,43 @@ func (t *Table) SetRowStyle(row int, stylers ...Freestyler) *Table {
 	return t
 }
 
-// SetStyleFunc sets the programmable style resolver for all cells.
+// SetStyleFunc sets the programmable style resolver(s) for cells.
 //
-// The Funcstyler is evaluated after default, column, and row styles and
-// before cell-specific styles in resolveStyle.
-func (t *Table) SetStyleFunc(fn Funcstyler) *Table {
-	t.styleFunc = fn
+// Functions are composed left-to-right: later functions override earlier ones
+// via CellStyle.merge(). Each function receives cell origin position (row, col)
+// and table dimensions (rowCount, colCount).
+//
+// Composition semantics:
+//   - Functions evaluated in order: fn1, fn2, fn3, ...
+//   - Results merged sequentially: base.merge(fn1).merge(fn2).merge(fn3)
+//   - Non-zero values in later styles override earlier ones
+//
+// Multi-span cells:
+//   - Only cell origin position (cell.r, cell.c) is evaluated
+//   - Spanning cells do NOT trigger functions for covered positions
+//
+// Resolution order:
+//
+//	defaultStyle < columnStyles < rowStyles < SetStyleFunc < cellStyles
+//
+// Example - Header with zebra striping:
+//
+//	t.SetStyleFunc(
+//	    tbl.FirstRow(tbl.BBottom()),
+//	    tbl.EvenRowsSkipN(1, tbl.Pad(1)),
+//	)
+//
+// Example - Custom predicate:
+//
+//	isSpecialRow := func(row, col, _, _ int) bool {
+//	    return row%5 == 0 && row > 0
+//	}
+//	t.SetStyleFunc(
+//	    tbl.FirstRow(tbl.BBottom()),
+//	    tbl.Predicate(isSpecialRow, tbl.BTop()),
+//	)
+func (t *Table) SetStyleFunc(fns ...Funcstyler) *Table {
+	t.styleFunc = composeFuncstylers(fns...)
 	return t
 }
 
@@ -57,6 +88,26 @@ func (t *Table) SetCellStyle(id ID, stylers ...Freestyler) *Table {
 	}
 	t.cellStyles[id] = t.cellStyles[id].Apply(stylers...)
 	return t
+}
+
+// composeFuncstylers combines multiple Funcstylers into one.
+// Functions are evaluated left-to-right, with results merged sequentially.
+// Returns nil if no functions provided.
+func composeFuncstylers(fns ...Funcstyler) Funcstyler {
+	if len(fns) == 0 {
+		return nil
+	}
+
+	return func(row, col, rowCount, colCount int) CellStyle {
+		style := CellStyle{}
+		for _, fn := range fns {
+			if fn != nil {
+				applied := fn(row, col, rowCount, colCount)
+				style = style.merge(applied)
+			}
+		}
+		return style
+	}
 }
 
 // resolveStyle returns effective style for cell using hierarchy.
