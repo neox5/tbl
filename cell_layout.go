@@ -1,6 +1,7 @@
 package tbl
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 	"unicode/utf8"
@@ -30,7 +31,8 @@ func visualLength(s string) int {
 //  2. Build content lines with word wrapping based on WrapMode
 //  3. Apply horizontal alignment to each line
 //  4. Apply vertical alignment (padding/truncation to height)
-//  5. Add horizontal padding to each line
+//  5. Apply ANSI styling (colors and font styles) to content
+//  6. Add horizontal padding to each line
 func (c *Cell) layout(width, height int, style CellStyle) []string {
 	if width <= 0 || height <= 0 {
 		return []string{}
@@ -67,28 +69,94 @@ func (c *Cell) layout(width, height int, style CellStyle) []string {
 	// Apply vertical alignment
 	paddedLines := applyVAlign(alignedLines, contentWidth, contentHeight, style.VAlign)
 
+	// Apply ANSI styling to content lines (before padding)
+	for i, line := range paddedLines {
+		paddedLines[i] = wrapWithAnsi(line, style)
+	}
+
 	// Add horizontal padding to each line
 	leftPad := strings.Repeat(" ", style.Padding.Left)
 	rightPad := strings.Repeat(" ", style.Padding.Right)
 	finalLines := make([]string, height)
 
-	// Top padding
+	// Top padding (no styling)
 	emptyLine := strings.Repeat(" ", width)
 	for i := range style.Padding.Top {
 		finalLines[i] = emptyLine
 	}
 
-	// Content lines with horizontal padding
+	// Content lines with horizontal padding (styling already applied)
 	for i, line := range paddedLines {
 		finalLines[style.Padding.Top+i] = leftPad + line + rightPad
 	}
 
-	// Bottom padding
+	// Bottom padding (no styling)
 	for i := style.Padding.Top + len(paddedLines); i < height; i++ {
 		finalLines[i] = emptyLine
 	}
 
 	return finalLines
+}
+
+// wrapWithAnsi wraps text with ANSI escape codes for styling.
+// Preserves existing ANSI codes in content.
+func wrapWithAnsi(text string, style CellStyle) string {
+	if style.FontColor == (Color{}) &&
+		style.BgColor == (BgColor{}) &&
+		style.FontStyle == 0 {
+		return text
+	}
+
+	var codes []string
+
+	// Font style codes
+	if style.FontStyle&FontBold != 0 {
+		codes = append(codes, "1")
+	}
+	if style.FontStyle&FontDim != 0 {
+		codes = append(codes, "2")
+	}
+	if style.FontStyle&FontItalic != 0 {
+		codes = append(codes, "3")
+	}
+	if style.FontStyle&FontUnderline != 0 {
+		codes = append(codes, "4")
+	}
+	if style.FontStyle&FontBlink != 0 {
+		codes = append(codes, "5")
+	}
+	if style.FontStyle&FontReverse != 0 {
+		codes = append(codes, "7")
+	}
+	if style.FontStyle&FontStrikethrough != 0 {
+		codes = append(codes, "9")
+	}
+
+	// Font color
+	if style.FontColor != (Color{}) {
+		code := ansiCode(style.FontColor, false)
+		if code != "" {
+			// Extract numeric codes from ANSI sequence
+			trimmed := strings.TrimPrefix(strings.TrimSuffix(code, "m"), "\x1b[")
+			codes = append(codes, trimmed)
+		}
+	}
+
+	// Background color - cast to Color for ansiCode
+	if style.BgColor != (BgColor{}) {
+		code := ansiCode(Color(style.BgColor), true)
+		if code != "" {
+			trimmed := strings.TrimPrefix(strings.TrimSuffix(code, "m"), "\x1b[")
+			codes = append(codes, trimmed)
+		}
+	}
+
+	if len(codes) == 0 {
+		return text
+	}
+
+	prefix := fmt.Sprintf("\x1b[%sm", strings.Join(codes, ";"))
+	return prefix + text + "\x1b[0m"
 }
 
 // buildRawLines converts content into lines that fit width using word wrapping.

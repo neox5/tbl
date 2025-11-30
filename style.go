@@ -29,12 +29,15 @@ func (w WrapMode) Style(base CellStyle) CellStyle {
 
 // CellStyle contains presentation attributes for a cell.
 type CellStyle struct {
-	Padding  Padding
-	HAlign   HAlign
-	VAlign   VAlign
-	Border   Border
-	WrapMode WrapMode
-	Template CharTemplate
+	Padding   Padding
+	HAlign    HAlign
+	VAlign    VAlign
+	Border    Border
+	WrapMode  WrapMode
+	Template  CharTemplate
+	FontColor Color
+	BgColor   BgColor
+	FontStyle FontStyle
 }
 
 // NewStyle creates a CellStyle from stylers.
@@ -70,7 +73,7 @@ func (s CellStyle) Style(base CellStyle) CellStyle {
 // Merge semantics:
 //   - Zero values in override are ignored (base value preserved)
 //   - Non-zero values in override replace base values
-//   - Applies to all fields: Padding, HAlign, VAlign, Border, WrapMode, Template
+//   - Applies to all fields: Padding, HAlign, VAlign, Border, WrapMode, Template, FontColor, BgColor, FontStyle
 //
 // Used by:
 //   - Style resolution hierarchy (default < column < row < styleFunc < cell)
@@ -121,6 +124,17 @@ func (s CellStyle) merge(other CellStyle) CellStyle {
 	// Template: only override if explicitly set (non-zero runes)
 	if other.Template != (CharTemplate{}) {
 		result.Template = other.Template
+	}
+
+	// Color and font style: only override if explicitly set (non-zero)
+	if other.FontColor != (Color{}) {
+		result.FontColor = other.FontColor
+	}
+	if other.BgColor != (BgColor{}) {
+		result.BgColor = other.BgColor
+	}
+	if other.FontStyle != 0 {
+		result.FontStyle = other.FontStyle
 	}
 
 	return result
