@@ -77,7 +77,7 @@ func (t *Table) resolveStyle(cell *Cell) CellStyle {
 
 	// Programmable style at origin
 	if t.styleFunc != nil {
-		fs := t.styleFunc(cell.r, cell.c)
+		fs := t.styleFunc(cell.r, cell.c, t.g.Rows(), t.g.Cols())
 		if fs.Template != (CharTemplate{}) {
 			panic("tbl: CharTemplate only supported via SetDefaultStyle")
 		}

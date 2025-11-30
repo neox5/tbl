@@ -9,7 +9,8 @@ type Freestyler interface {
 
 // Funcstyler computes a CellStyle for a given cell position.
 // The returned style is merged into the resolved style for the cell.
-type Funcstyler func(row, col int) CellStyle
+// Parameters: row, col (cell position), rowCount, colCount (table dimensions)
+type Funcstyler func(row, col, rowCount, colCount int) CellStyle
 
 // WrapMode controls how content overflow is handled.
 type WrapMode int
