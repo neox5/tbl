@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	table := tbl.Simple(
+	table := tbl.New().Simple(
 		tbl.Row("Product", "SKU", "Stock", "Price"),
 		tbl.Row("USB-C Cable", "ACC-001", "156", "$12.99"),
 		tbl.Row("Wireless Mouse", "PER-042", "89", "$24.99"),

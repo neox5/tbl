@@ -164,7 +164,7 @@ func (t *Table) AddCell(ct CellType, rowSpan, colSpan int, content string) ID {
 //
 // Example:
 //
-//	t := tbl.Simple(
+//	tbl.New().Simple(
 //	    tbl.Row("Name", "Age", "City"),
 //	    tbl.Row("Alice", "30", "NYC"),
 //	    tbl.Row("Bob", "25", "LA"),
@@ -173,25 +173,25 @@ func Row(cells ...string) []string {
 	return cells
 }
 
-// Simple creates and populates a table from rows.
-// Each row is a string slice with Static [1,1] cells.
-// Returns configured Table ready for styling or rendering.
+// Simple adds rows of static [1,1] cells from string slices.
+// Returns the table for method chaining.
 //
-// Example with Row helper:
+// Example - basic usage:
 //
-//	tbl.Simple(
+//	tbl.New().Simple(
 //	    tbl.Row("Name", "Age"),
 //	    tbl.Row("Alice", "30"),
 //	).Print()
 //
-// Example without Row helper:
+// Example - mixed with other APIs:
 //
-//	tbl.Simple(
-//	    []string{"Name", "Age"},
-//	    []string{"Alice", "30"},
-//	).Print()
-func Simple(rows ...[]string) *Table {
-	t := New()
+//	t := tbl.New()
+//	t.AddRow(tbl.F("Header"))
+//	t.Simple(
+//	    tbl.Row("Name", "Age"),
+//	    tbl.Row("Alice", "30"),
+//	)
+func (t *Table) Simple(rows ...[]string) *Table {
 	for _, row := range rows {
 		t.AddRow()
 		for _, cell := range row {

@@ -1,3 +1,5 @@
+// doc.go (complete file)
+
 // Package tbl provides CLI table rendering.
 //
 // Features:
@@ -11,9 +13,9 @@
 //
 // Usage Patterns:
 //
-// 1. Simple tables (helper function):
+// 1. Simple tables (method):
 //
-//	tbl.Simple(
+//	tbl.New().Simple(
 //	    tbl.Row("Name", "Age"),
 //	    tbl.Row("Alice", "30"),
 //	).SetDefaultStyle(tbl.BAll()).Print()
